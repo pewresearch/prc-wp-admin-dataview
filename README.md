@@ -1,1 +1,1 @@
-# prc-wp-admin-dataviews
+# prc-wp-admin-dataview
