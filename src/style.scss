@@ -1,0 +1,373 @@
+@import "@wordpress/dataviews/build-style/style.css";
+
+.prc-wp-admin-dataview {
+	box-sizing: border-box;
+	height: 100%;
+	min-height: 0;
+	padding: 16px;
+
+	&__layout {
+		display: flex;
+		align-items: stretch;
+		gap: 16px;
+		height: 100%;
+		min-height: 0;
+	}
+
+	&__main {
+		flex: 1 1 auto;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	&__header {
+		flex: 0 0 auto;
+		padding-bottom: 12px;
+	}
+
+	&__dataviews {
+		flex: 1 1 auto;
+		min-height: 0;
+	}
+
+	&__title-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+	}
+
+	&__saved-filters-toggle-wrap {
+		position: relative;
+		display: inline-flex;
+		flex-shrink: 0;
+	}
+
+	&__saved-filters-badge {
+		position: absolute;
+		top: -4px;
+		right: -4px;
+		min-width: 16px;
+		height: 16px;
+		padding: 0 4px;
+		border-radius: 999px;
+		background: var(--wp-admin-theme-color, #2271b1);
+		color: #fff;
+		font-size: 10px;
+		font-weight: 600;
+		line-height: 16px;
+		text-align: center;
+		pointer-events: none;
+	}
+
+	// Popover portals outside .prc-wp-admin-dataview.
+	@at-root .components-popover#{&}__saved-filters-popover {
+		.components-popover__content {
+			padding: 0;
+			overflow: hidden;
+		}
+	}
+
+	@at-root #{&}__saved-filters-shelf {
+		width: 300px;
+		max-width: min(300px, 90vw);
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding: 12px;
+		box-sizing: border-box;
+		max-height: min(480px, calc(100vh - 120px));
+	}
+
+	&__saved-filters-shelf-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+
+		h2 {
+			margin: 0;
+			font-size: 13px;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.02em;
+		}
+	}
+
+	&__saved-filters-shelf-body {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow: auto;
+	}
+
+	&__saved-filters-empty,
+	&__saved-filters-hint {
+		margin: 0;
+		color: #646970;
+		font-size: 13px;
+	}
+
+	&__saved-filters-list {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	&__saved-filters-item {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 8px;
+		border: 1px solid #dcdcde;
+		border-radius: 4px;
+
+		&.is-active {
+			border-color: var(--wp-admin-theme-color, #2271b1);
+			background: #f0f6fc;
+		}
+	}
+
+	&__saved-filters-apply {
+		justify-content: flex-start;
+		width: 100%;
+		text-align: left;
+		white-space: normal;
+		height: auto;
+		min-height: 36px;
+	}
+
+	&__saved-filters-item-actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 4px;
+	}
+
+	&__saved-filters-rename,
+	&__saved-filters-save {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	&__saved-filters-rename-actions {
+		display: flex;
+		gap: 4px;
+	}
+
+	&__saved-filters-shelf-footer {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding-top: 8px;
+		border-top: 1px solid #dcdcde;
+	}
+
+	h1 {
+		margin: 0;
+		font-size: 1.5rem;
+		font-weight: 600;
+	}
+
+	&__description {
+		min-width: max-content;
+	}
+
+	&__edit-action-label,
+	&__trash-action-label {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	// @at-root: Menu.Popover portals outside .prc-wp-admin-dataview.
+	@at-root a#{&}__edit-action-label {
+		color: inherit;
+		text-decoration: none;
+
+		&:hover,
+		&:focus {
+			color: inherit;
+		}
+	}
+
+	// More-menu default: text label.
+	&__edit-action-label-text,
+	&__trash-action-label-text {
+		display: inline;
+	}
+
+	&__edit-action-label-icon,
+	&__trash-action-label-icon {
+		display: none;
+		line-height: 0;
+	}
+
+	@mixin action-label-icon-only($label-class) {
+		.#{$label-class}-text {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.#{$label-class}-icon {
+			display: inline-flex;
+		}
+
+		.components-button:has(.#{$label-class}) {
+			min-width: 36px;
+			padding-inline: 8px;
+		}
+	}
+
+	// Primary row actions (hover edit): icon only, like email-builder.
+	.dataviews-item-actions
+		.components-button:not(.dataviews-all-actions-button) {
+		@include action-label-icon-only(
+			"prc-wp-admin-dataview__edit-action-label"
+		);
+	}
+
+	// Bulk footer: trash icon only.
+	.dataviews-bulk-actions-footer__action-buttons {
+		@include action-label-icon-only(
+			"prc-wp-admin-dataview__trash-action-label"
+		);
+	}
+
+	&__clear-selection {
+		margin-inline-start: 4px;
+	}
+
+	&__parent-filter-link {
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--wp-admin-theme-color, #2271b1);
+		font: inherit;
+		text-align: left;
+		text-decoration: underline;
+		cursor: pointer;
+
+		&:hover,
+		&:focus {
+			color: var(--wp-admin-theme-color-darker-10, #135e96);
+		}
+	}
+
+	&__title-cell {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+		max-width: 100%;
+
+		// renderItemLink keeps the edit <a> as a flex sibling of presence;
+		// allow the anchor to shrink so title ellipsis still applies.
+		> a {
+			min-width: 0;
+		}
+	}
+
+	// renderItemLink places `dataviews-title-field` on the edit <a> itself.
+	// Upstream only styles `.dataviews-title-field a` (descendant).
+	a.dataviews-title-field {
+		display: block;
+		flex-grow: 0;
+		overflow: hidden;
+		text-decoration: none;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	&__title-text {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	&__presence-stack {
+		display: inline-flex;
+		flex-shrink: 0;
+		align-items: center;
+
+		img,
+		.prc-wp-admin-dataview__presence-fallback,
+		.prc-wp-admin-dataview__presence-overflow {
+			width: 24px;
+			height: 24px;
+			border-radius: 9999px;
+			margin-inline-start: -8px;
+			box-shadow: 0 0 0 2px #fff;
+			position: relative;
+			object-fit: cover;
+		}
+
+		img:first-child,
+		.prc-wp-admin-dataview__presence-fallback:first-child {
+			margin-inline-start: 0;
+		}
+	}
+
+	&__presence-fallback,
+	&__presence-overflow {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: #1e1e1e;
+		color: #fff;
+		font-size: 10px;
+		font-weight: 600;
+		line-height: 1;
+	}
+
+	&__presence-overflow {
+		background: #646970;
+	}
+
+	&__featured-image {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		border-radius: 2px;
+		background: #f0f0f0;
+	}
+
+	&__featured-image--empty {
+		min-height: 80px;
+		background: #f0f0f0;
+	}
+}
+
+// Fill Gutenberg Boot's rounded stage (RootSinglePage), not the old wrap Card.
+.boot-layout__stage > .prc-wp-admin-dataview {
+	height: 100%;
+	min-height: 0;
+}
+
+// Child posts: title indent. Row class is synced in dataviews.jsx
+// (DataViews has no row className API); :has() covers the title cell.
+.dataviews-view-table__row:has(.prc-wp-admin-dataview__child-title-text) {
+	border-top-color: #f7f7f7;
+	.dataviews-title-field {
+		font-size: 0.9em;
+		padding-left: 1.25em;
+	}
+	td {
+		padding-top: 0.5em !important;
+		padding-bottom: 0.5em !important;
+	}
+}

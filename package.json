@@ -1,0 +1,19 @@
+{
+	"name": "@prc/wp-admin-dataview",
+	"version": "1.0.0",
+	"description": "DataViews admin list shells for core and shared post types, with a field-provider contract for domain plugins.",
+	"scripts": {
+		"build": "wp-scripts build && wp-scripts build --config webpack.settings.config.js",
+		"build:settings": "wp-scripts build --config webpack.settings.config.js",
+		"start": "wp-scripts start",
+		"start:settings": "wp-scripts start --config webpack.settings.config.js"
+	},
+	"devDependencies": {
+		"@wordpress/scripts": "^31.4.0"
+	},
+	"dependencies": {
+		"@prc/components": "*",
+		"@wordpress/dataviews": "17.2.0",
+		"@wordpress/icons": "^10.23.0"
+	}
+}
