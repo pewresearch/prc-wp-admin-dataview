@@ -6,50 +6,13 @@ import { useCallback, useEffect, useRef, useState } from '@wordpress/element';
 import { applyFilters } from '@wordpress/hooks';
 import { addQueryArgs } from '@wordpress/url';
 
-const ORDERBY_MAP = {
-	title: 'title',
-	date: 'date',
-	modified: 'modified',
-	author: 'author',
-	id: 'ID',
-};
+/**
+ * Internal Dependencies
+ */
+import { decodeRowText } from '../utils/decode-row-text';
+import { viewToQueryArgs } from '../utils/view-to-query-args';
 
-function viewToQueryArgs(view, postType) {
-	const args = {
-		post_type: postType,
-		per_page: view.perPage || 20,
-		page: view.page || 1,
-		status: 'publish,draft,pending,private,future',
-	};
-
-	if (view.search) {
-		args.search = view.search;
-	}
-
-	args.orderby = ORDERBY_MAP[view.sort?.field] || 'date';
-	args.order = view.sort?.direction || 'desc';
-
-	view.filters?.forEach((filter) => {
-		const values = Array.isArray(filter.value)
-			? filter.value
-			: [filter.value];
-		const joined = values
-			.filter((value) => value !== undefined && value !== '')
-			.join(',');
-
-		if (!joined) {
-			return;
-		}
-
-		if (filter.field === 'status') {
-			args.status = joined;
-		} else {
-			args[filter.field] = joined;
-		}
-	});
-
-	return args;
-}
+const DEFAULT_REST_PATH = '/prc-api/v3/wp-admin-dataview/list';
 
 export default function usePosts(view, postType, restPath) {
 	const [posts, setPosts] = useState([]);
@@ -63,6 +26,14 @@ export default function usePosts(view, postType, restPath) {
 	const refresh = useCallback(() => setRefreshToken((n) => n + 1), []);
 	const abortRef = useRef(null);
 
+	const resolvedRestPath = restPath || DEFAULT_REST_PATH;
+	const args = applyFilters(
+		'prcWpAdminDataview.restQuery',
+		viewToQueryArgs(view, postType),
+		{ view, postType, restPath: resolvedRestPath }
+	);
+	const queryKey = JSON.stringify({ path: resolvedRestPath, args });
+
 	useEffect(() => {
 		if (abortRef.current) {
 			abortRef.current.abort();
@@ -73,16 +44,10 @@ export default function usePosts(view, postType, restPath) {
 		setIsLoading(true);
 		setError(null);
 
-		const resolvedRestPath =
-			restPath || '/prc-api/v3/wp-admin-dataview/list';
-		const args = applyFilters(
-			'prcWpAdminDataview.restQuery',
-			viewToQueryArgs(view, postType),
-			{ view, postType, restPath: resolvedRestPath }
-		);
-		const path = addQueryArgs(resolvedRestPath, args);
+		const { path, args: requestArgs } = JSON.parse(queryKey);
+		const requestPath = addQueryArgs(path, requestArgs);
 
-		apiFetch({ path, signal: controller.signal, parse: false })
+		apiFetch({ path: requestPath, signal: controller.signal, parse: false })
 			.then(async (response) => {
 				const total = parseInt(
 					response.headers.get('X-WP-Total') || '0',
@@ -93,7 +58,7 @@ export default function usePosts(view, postType, restPath) {
 					10
 				);
 				const data = await response.json();
-				setPosts(Array.isArray(data) ? data : []);
+				setPosts(Array.isArray(data) ? data.map(decodeRowText) : []);
 				setPaginationInfo({ totalItems: total, totalPages });
 			})
 			.catch((err) => {
@@ -109,7 +74,7 @@ export default function usePosts(view, postType, restPath) {
 			});
 
 		return () => controller.abort();
-	}, [view, postType, restPath, refreshToken]);
+	}, [queryKey, refreshToken]);
 
 	return { posts, isLoading, error, paginationInfo, refresh };
 }

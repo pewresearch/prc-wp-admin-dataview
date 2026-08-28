@@ -12,10 +12,13 @@ namespace PRC\Platform\Wp_Admin_Dataview;
  * inline field updates. WordPress filters are the registration API.
  */
 class Provider_Registry {
-	public const FILTER_SHAPE_ROW    = 'prc_wp_admin_dataview_shape_row';
-	public const FILTER_QUERY_ARGS   = 'prc_wp_admin_dataview_query_args';
-	public const FILTER_LOCALIZE     = 'prc_wp_admin_dataview_localize';
-	public const FILTER_UPDATE_FIELD = 'prc_wp_admin_dataview_update_field';
+	public const FILTER_SHAPE_ROW       = 'prc_wp_admin_dataview_shape_row';
+	public const FILTER_QUERY_ARGS      = 'prc_wp_admin_dataview_query_args';
+	public const FILTER_LOCALIZE        = 'prc_wp_admin_dataview_localize';
+	public const FILTER_UPDATE_FIELD    = 'prc_wp_admin_dataview_update_field';
+	public const FILTER_DUPLICATE_ARGS  = 'prc_wp_admin_dataview_duplicate_args';
+	public const FILTER_TAXONOMY_FIELDS = 'prc_wp_admin_dataview_taxonomy_fields';
+	public const ACTION_DUPLICATED      = 'prc_wp_admin_dataview_duplicated';
 
 	/**
 	 * Filter names consumed by the shell.
@@ -24,10 +27,12 @@ class Provider_Registry {
 	 */
 	public static function filters(): array {
 		return array(
-			'shape_row'    => self::FILTER_SHAPE_ROW,
-			'query_args'   => self::FILTER_QUERY_ARGS,
-			'localize'     => self::FILTER_LOCALIZE,
-			'update_field' => self::FILTER_UPDATE_FIELD,
+			'shape_row'       => self::FILTER_SHAPE_ROW,
+			'query_args'      => self::FILTER_QUERY_ARGS,
+			'localize'        => self::FILTER_LOCALIZE,
+			'update_field'    => self::FILTER_UPDATE_FIELD,
+			'duplicate_args'  => self::FILTER_DUPLICATE_ARGS,
+			'taxonomy_fields' => self::FILTER_TAXONOMY_FIELDS,
 		);
 	}
 }

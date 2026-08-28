@@ -18,6 +18,13 @@ use WP_REST_Response;
  */
 class REST_Controller {
 	/**
+	 * Default list query statuses. Trash is opt-in via the status filter.
+	 *
+	 * @var string[]
+	 */
+	public const DEFAULT_LIST_STATUSES = array( 'publish', 'draft', 'pending', 'private', 'future' );
+
+	/**
 	 * List registry.
 	 *
 	 * @var List_Registry
@@ -25,13 +32,22 @@ class REST_Controller {
 	private List_Registry $lists;
 
 	/**
+	 * Duplicator.
+	 *
+	 * @var Post_Duplicator
+	 */
+	private Post_Duplicator $duplicator;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param Loader        $loader Loader.
-	 * @param List_Registry $lists  List registry.
+	 * @param Loader          $loader     Loader.
+	 * @param List_Registry   $lists      List registry.
+	 * @param Post_Duplicator $duplicator Duplicator.
 	 */
-	public function __construct( $loader, List_Registry $lists ) {
-		$this->lists = $lists;
+	public function __construct( $loader, List_Registry $lists, Post_Duplicator $duplicator ) {
+		$this->lists      = $lists;
+		$this->duplicator = $duplicator;
 		$loader->add_action( 'rest_api_init', $this, 'register_rest_endpoints' );
 	}
 
@@ -69,7 +85,7 @@ class REST_Controller {
 					),
 					'status'    => array(
 						'type'              => 'string',
-						'default'           => 'publish,draft,pending,private,future',
+						'default'           => implode( ',', self::DEFAULT_LIST_STATUSES ),
 						'sanitize_callback' => 'sanitize_text_field',
 					),
 					'orderby'   => array(
@@ -85,6 +101,38 @@ class REST_Controller {
 						'type'              => 'integer',
 						'required'          => false,
 						'sanitize_callback' => 'absint',
+					),
+					'author'       => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'author_exclude' => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			'prc-api/v3',
+			'wp-admin-dataview/terms',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_terms' ),
+				'permission_callback' => array( $this, 'list_permission' ),
+				'args'                => array(
+					'post_type' => array(
+						'type'              => 'string',
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'taxonomy'  => array(
+						'type'              => 'string',
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_key',
 					),
 				),
 			)
@@ -110,6 +158,27 @@ class REST_Controller {
 					),
 					'value'    => array(
 						'required' => false,
+					),
+					'postType' => array(
+						'type'              => 'string',
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_key',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			'prc-api/v3',
+			'wp-admin-dataview/duplicate',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'duplicate_post' ),
+				'permission_callback' => array( $this, 'duplicate_permission' ),
+				'args'                => array(
+					'postId'   => array(
+						'type'     => 'integer',
+						'required' => true,
 					),
 					'postType' => array(
 						'type'              => 'string',
@@ -182,6 +251,29 @@ class REST_Controller {
 			return new WP_Error( 'prc_wp_admin_dataview_unknown_type', __( 'Unknown list post type.', 'prc-wp-admin-dataview' ), array( 'status' => 404 ) );
 		}
 
+		$query_args = self::build_list_query_args( $request, $post_type );
+		$query      = new WP_Query( $query_args );
+		$rows       = array();
+		foreach ( $query->posts as $post ) {
+			if ( $post instanceof WP_Post ) {
+				$rows[] = $this->shape_row( $post, $post_type );
+			}
+		}
+
+		$response = rest_ensure_response( $rows );
+		$response->header( 'X-WP-Total', (string) (int) $query->found_posts );
+		$response->header( 'X-WP-TotalPages', (string) (int) $query->max_num_pages );
+		return $response;
+	}
+
+	/**
+	 * Build WP_Query args for a DataViews list request.
+	 *
+	 * @param WP_REST_Request $request   Request.
+	 * @param string          $post_type Post type.
+	 * @return array<string, mixed>
+	 */
+	public static function build_list_query_args( WP_REST_Request $request, string $post_type ): array {
 		$per_page = max( 1, min( 100, (int) $request->get_param( 'per_page' ) ) );
 		$page     = max( 1, (int) $request->get_param( 'page' ) );
 		$search   = (string) $request->get_param( 'search' );
@@ -196,7 +288,7 @@ class REST_Controller {
 			)
 		);
 		if ( empty( $statuses ) ) {
-			$statuses = array( 'publish', 'draft', 'pending', 'private', 'future' );
+			$statuses = self::DEFAULT_LIST_STATUSES;
 		}
 
 		// sanitize_key() lowercases; WP_Query expects uppercase ID.
@@ -220,24 +312,64 @@ class REST_Controller {
 			'update_post_term_cache' => true,
 		);
 
-		if ( '' !== $search ) {
-			$query_args['s'] = $search;
+		$author_ids = self::parse_author_ids( (string) $request->get_param( 'author' ) );
+		if ( 1 === count( $author_ids ) ) {
+			$query_args['author'] = $author_ids[0];
+		} elseif ( count( $author_ids ) > 1 ) {
+			$query_args['author__in'] = $author_ids;
+		}
+
+		$author_exclude_ids = self::parse_author_ids( (string) $request->get_param( 'author_exclude' ) );
+		if ( ! empty( $author_exclude_ids ) ) {
+			$query_args['author__not_in'] = $author_exclude_ids;
 		}
 
 		$query_args = apply_filters( Provider_Registry::FILTER_QUERY_ARGS, $query_args, $request, $post_type );
 
-		$query = new WP_Query( $query_args );
-		$rows  = array();
-		foreach ( $query->posts as $post ) {
-			if ( $post instanceof WP_Post ) {
-				$rows[] = $this->shape_row( $post, $post_type );
-			}
+		return Search_Query::apply( $query_args, $search, $statuses );
+	}
+
+	/**
+	 * Parse comma-separated author IDs from a list query param.
+	 *
+	 * @param string $raw Comma-separated author IDs.
+	 * @return int[]
+	 */
+	private static function parse_author_ids( string $raw ): array {
+		if ( '' === $raw ) {
+			return array();
 		}
 
-		$response = rest_ensure_response( $rows );
-		$response->header( 'X-WP-Total', (string) (int) $query->found_posts );
-		$response->header( 'X-WP-TotalPages', (string) (int) $query->max_num_pages );
-		return $response;
+		return array_values(
+			array_filter(
+				array_map( 'absint', explode( ',', $raw ) )
+			)
+		);
+	}
+
+	/**
+	 * Term options for a registry taxonomy on a registered list type.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function get_terms( WP_REST_Request $request ) {
+		$post_type = sanitize_key( (string) $request->get_param( 'post_type' ) );
+		$taxonomy  = sanitize_key( (string) $request->get_param( 'taxonomy' ) );
+
+		if ( ! Taxonomy_Fields_Provider::is_registered_taxonomy( $taxonomy ) ) {
+			return new WP_Error(
+				'prc_wp_admin_dataview_unknown_taxonomy',
+				__( 'Unknown taxonomy.', 'prc-wp-admin-dataview' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( ! Taxonomy_Fields_Provider::supports_taxonomy( $post_type, $taxonomy ) ) {
+			return rest_ensure_response( array() );
+		}
+
+		return rest_ensure_response( Taxonomy_Fields_Provider::get_term_options( $taxonomy ) );
 	}
 
 	/**
@@ -250,12 +382,14 @@ class REST_Controller {
 	public function shape_row( WP_Post $post, string $post_type ): array {
 		$author = get_userdata( (int) $post->post_author );
 		$row    = array(
-			'id'       => (int) $post->ID,
-			'title'    => get_the_title( $post ),
-			'status'   => $post->post_status,
-			'author'   => $author ? $author->display_name : '',
-			'date'     => get_post_time( 'c', true, $post ),
-			'edit_url' => get_edit_post_link( $post->ID, 'raw' ),
+			'id'             => (int) $post->ID,
+			'title'          => get_the_title( $post ),
+			'status'         => $post->post_status,
+			'previousStatus' => (string) get_post_meta( $post->ID, '_wp_trash_meta_status', true ),
+			'author'         => $author ? plain_text( (string) $author->display_name ) : '',
+			'authorId'       => (int) $post->post_author,
+			'date'           => get_post_time( 'c', true, $post ),
+			'edit_url'       => get_edit_post_link( $post->ID, 'raw' ),
 		);
 
 		if ( post_type_supports( $post_type, 'thumbnail' ) ) {
@@ -265,7 +399,23 @@ class REST_Controller {
 			$row['featuredImage'] = '';
 		}
 
-		return apply_filters( Provider_Registry::FILTER_SHAPE_ROW, $row, $post, $post_type );
+		$row = apply_filters( Provider_Registry::FILTER_SHAPE_ROW, $row, $post, $post_type );
+
+		$decode_keys = array( 'title', 'parentPostTitle', 'author' );
+		if ( class_exists( Taxonomy_Fields_Provider::class ) ) {
+			foreach ( Taxonomy_Fields_Provider::registry() as $entry ) {
+				if ( ! empty( $entry['fieldId'] ) ) {
+					$decode_keys[] = (string) $entry['fieldId'];
+				}
+			}
+		}
+		foreach ( array_unique( $decode_keys ) as $key ) {
+			if ( isset( $row[ $key ] ) && is_string( $row[ $key ] ) ) {
+				$row[ $key ] = plain_text( $row[ $key ] );
+			}
+		}
+
+		return $row;
 	}
 
 	/**
@@ -302,6 +452,100 @@ class REST_Controller {
 			array(
 				'success' => true,
 				'row'     => $this->shape_row( get_post( $post_id ), $post_type ),
+			)
+		);
+	}
+
+	/**
+	 * Duplicate permission.
+	 *
+	 * Unknown type or disabled duplicate is 404. Cap failure is 403.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return bool|WP_Error
+	 */
+	public function duplicate_permission( WP_REST_Request $request ) {
+		$post_id   = (int) $request->get_param( 'postId' );
+		$post_type = sanitize_key( (string) $request->get_param( 'postType' ) );
+		$post      = get_post( $post_id );
+
+		if ( ! $post instanceof WP_Post || $post->post_type !== $post_type ) {
+			return new WP_Error(
+				'prc_wp_admin_dataview_bad_post',
+				__( 'Post not found.', 'prc-wp-admin-dataview' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$config = $this->lists->get( $post_type );
+		if ( null === $config ) {
+			return new WP_Error(
+				'prc_wp_admin_dataview_unknown_type',
+				__( 'Unknown list post type.', 'prc-wp-admin-dataview' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$args = Duplicate_Args::resolve( $config, $post_type, $post );
+		if ( empty( $args['enabled'] ) ) {
+			return new WP_Error(
+				'prc_wp_admin_dataview_duplicate_disabled',
+				__( 'Duplicate is disabled for this post type.', 'prc-wp-admin-dataview' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		return $this->duplicator->can_duplicate( $post );
+	}
+
+	/**
+	 * Duplicate a registered list post into a new draft.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function duplicate_post( WP_REST_Request $request ) {
+		$post_id   = (int) $request->get_param( 'postId' );
+		$post_type = sanitize_key( (string) $request->get_param( 'postType' ) );
+		$post      = get_post( $post_id );
+
+		if ( ! $post instanceof WP_Post || $post->post_type !== $post_type ) {
+			return new WP_Error(
+				'prc_wp_admin_dataview_bad_post',
+				__( 'Post not found.', 'prc-wp-admin-dataview' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$config = $this->lists->get( $post_type );
+		if ( null === $config ) {
+			return new WP_Error(
+				'prc_wp_admin_dataview_unknown_type',
+				__( 'Unknown list post type.', 'prc-wp-admin-dataview' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$args = Duplicate_Args::resolve( $config, $post_type, $post );
+		if ( empty( $args['enabled'] ) ) {
+			return new WP_Error(
+				'prc_wp_admin_dataview_duplicate_disabled',
+				__( 'Duplicate is disabled for this post type.', 'prc-wp-admin-dataview' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$new_id = $this->duplicator->duplicate( $post );
+		if ( is_wp_error( $new_id ) ) {
+			return $new_id;
+		}
+
+		$edit_url = get_edit_post_link( $new_id, 'raw' );
+
+		return rest_ensure_response(
+			array(
+				'id'       => $new_id,
+				'edit_url' => is_string( $edit_url ) ? $edit_url : '',
 			)
 		);
 	}

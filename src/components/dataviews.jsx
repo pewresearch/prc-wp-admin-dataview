@@ -15,10 +15,12 @@ import { closeSmall } from '@wordpress/icons';
  * Internal Dependencies
  */
 import getActions from '../actions';
+import BulkEditModal from './bulk-edit-modal';
 import getFields, {
 	applyParentFamilyFilter,
 	createItemLinkRenderer,
 	getDefaultVisibleFields,
+	isLocalizedFlag,
 } from '../fields';
 import usePosts from '../hooks/use-posts';
 import usePresenceEditorsByPost from '../hooks/use-presence-editors';
@@ -27,9 +29,8 @@ import {
 	parseFiltersFromSearch,
 	urlHasFilterParams,
 } from '../utils/filter-url-sync';
+import { getEditableFields } from '../utils/simple-edit-fields';
 
-// List layout is omitted on purpose: upstream DataViews does not wire
-// ItemClickWrapper / renderItemLink there (selection-only interaction).
 const DEFAULT_LAYOUTS = {
 	table: {
 		showMedia: false,
@@ -43,6 +44,13 @@ const DEFAULT_LAYOUTS = {
 		layout: {
 			primaryField: 'title',
 			previewSize: 290,
+		},
+	},
+	list: {
+		showMedia: true,
+		mediaField: 'featuredImage',
+		layout: {
+			primaryField: 'title',
 		},
 	},
 };
@@ -106,6 +114,7 @@ export default function PostsDataViews({
 	onChangeView,
 }) {
 	const [selection, setSelection] = useState([]);
+	const [bulkItems, setBulkItems] = useState(null);
 	const { posts, isLoading, error, paginationInfo, refresh } = usePosts(
 		view,
 		postType,
@@ -127,10 +136,20 @@ export default function PostsDataViews({
 		[postType, config, onFilterByParent]
 	);
 
+	const canPublish = isLocalizedFlag(window?.prcWpAdminDataview?.canPublish);
+	const editableFields = useMemo(
+		() => getEditableFields(fields, { canPublish }),
+		[fields, canPublish]
+	);
+
 	const refreshAndClearSelection = useCallback(() => {
 		setSelection([]);
 		refresh();
 	}, [refresh]);
+
+	const handleBulkEdit = useCallback((items) => {
+		setBulkItems(items);
+	}, []);
 
 	const actions = useMemo(
 		() =>
@@ -138,8 +157,16 @@ export default function PostsDataViews({
 				postType,
 				config,
 				onRefresh: refreshAndClearSelection,
+				onBulkEdit: handleBulkEdit,
+				hasEditableFields: editableFields.length > 0,
 			}),
-		[postType, config, refreshAndClearSelection]
+		[
+			postType,
+			config,
+			refreshAndClearSelection,
+			handleBulkEdit,
+			editableFields.length,
+		]
 	);
 
 	const renderItemLink = useMemo(
@@ -150,9 +177,6 @@ export default function PostsDataViews({
 		[editorsByPostId]
 	);
 
-	// Grid media a11y props (aria-labelledby / aria-label) are still gated on
-	// onClickItem upstream; ItemClickWrapper prefers renderItemLink when both
-	// are set, so this only unlocks naming for media anchors.
 	const onClickItem = useCallback((item) => {
 		if (item?.edit_url) {
 			window.location.href = item.edit_url;
@@ -210,6 +234,14 @@ export default function PostsDataViews({
 						postType === 'post' ? getItemLevel : undefined
 					}
 					isLoading={isLoading}
+					empty={
+						<p>
+							{__(
+								'No items match this search.',
+								'prc-wp-admin-dataview'
+							)}
+						</p>
+					}
 					renderItemLink={renderItemLink}
 					onClickItem={onClickItem}
 					isItemClickable={isItemClickable}
@@ -218,6 +250,15 @@ export default function PostsDataViews({
 					header={header}
 				/>
 			</div>
+			{bulkItems?.length ? (
+				<BulkEditModal
+					items={bulkItems}
+					editableFields={editableFields}
+					postType={postType}
+					onClose={() => setBulkItems(null)}
+					onComplete={refreshAndClearSelection}
+				/>
+			) : null}
 		</PresenceEditorsProvider>
 	);
 }

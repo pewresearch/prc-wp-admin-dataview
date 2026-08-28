@@ -1,6 +1,7 @@
 /**
  * WordPress Dependencies
  */
+import { DataForm } from '@wordpress/dataviews/wp';
 import { createRoot } from '@wordpress/element';
 
 /**
@@ -16,6 +17,7 @@ export {
 	subscribePageExtra,
 } from './slots';
 
+window.prcWpAdminDataviewsWp = { DataForm };
 window.prcWpAdminDataviewListStage = App;
 
 document.addEventListener('DOMContentLoaded', () => {

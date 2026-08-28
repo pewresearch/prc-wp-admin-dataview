@@ -24,19 +24,155 @@
 
 	&__header {
 		flex: 0 0 auto;
-		padding-bottom: 12px;
+		// padding-bottom: 12px;
+	}
+
+	&__header-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas:
+			"title actions"
+			"description description";
+		column-gap: 16px;
+		row-gap: 8px;
+		align-items: center;
+
+		@media (max-width: 600px) {
+			grid-template-areas:
+				"title title"
+				"actions actions"
+				"description description";
+		}
+	}
+
+	&__header-actions {
+		grid-area: actions;
+		grid-column: 2;
+		grid-row: 1;
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		align-items: center;
+		gap: 8px;
+		flex-shrink: 0;
+		justify-self: end;
+		min-width: max-content;
+		position: relative;
+		z-index: 1;
+
+		@media (max-width: 600px) {
+			grid-column: 1;
+			grid-row: 2;
+			justify-content: flex-start;
+			justify-self: start;
+		}
 	}
 
 	&__dataviews {
 		flex: 1 1 auto;
 		min-height: 0;
+		display: flex;
+		flex-direction: column;
+
+		.dataviews-wrapper {
+			flex: 1 1 auto;
+			min-height: 0;
+		}
+
+		.dataviews-no-results {
+			min-height: 8rem;
+		}
+	}
+
+	// Opaque sticky headers so row cells cannot paint through them.
+	// Presence avatars use position + z-index; keep thead above that stack.
+	.dataviews-view-table thead {
+		z-index: 2;
+		background-color: var(
+			--wp-dataviews-color-background,
+			var(--wpds-color-background-surface-neutral-strong, #fff)
+		);
+
+		th {
+			background-color: inherit;
+		}
+	}
+
+	// Gutenberg Stack sets wrap + fit-content as inline styles, so !important
+	// is required to keep chips on one row and scroll them on narrow screens.
+	@mixin filter-row-scroll {
+		flex-wrap: nowrap !important;
+		width: auto !important;
+		max-width: 100%;
+		overflow-x: auto;
+		overflow-y: hidden;
+		-webkit-overflow-scrolling: touch;
+		overscroll-behavior-x: contain;
+		scrollbar-width: thin;
+
+		> * {
+			flex-shrink: 0;
+		}
+	}
+
+	.dataviews-filters__container {
+		@media (max-width: 782px) {
+			@include filter-row-scroll;
+		}
+
+		@container dataviews-wrapper (max-width: 782px) {
+			@include filter-row-scroll;
+		}
+	}
+
+	&__bulk-edit-footer {
+		display: flex;
+		justify-content: flex-end;
+		gap: 8px;
+		margin-top: 16px;
+	}
+
+	&__bulk-edit-modal {
+		.components-modal__content {
+			min-width: min(32rem, 100%);
+		}
 	}
 
 	&__title-row {
+		grid-area: title;
+		grid-column: 1;
+		grid-row: 1;
 		display: flex;
 		align-items: center;
 		gap: 8px;
 		min-width: 0;
+
+		@media (max-width: 600px) {
+			grid-column: 1;
+			grid-row: 1;
+		}
+	}
+
+	&__status-badge {
+		white-space: nowrap;
+	}
+
+	.dataviews-view-table
+		tbody
+		.dataviews-view-table__cell-content-wrapper:has(
+			.prc-wp-admin-dataview__truncate-cell
+		) {
+		min-width: 0;
+		overflow: hidden;
+	}
+
+	&__truncate-cell {
+		display: block;
+		min-width: 0;
+		max-width: 40ch;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	&__saved-filters-toggle-wrap {
@@ -174,12 +310,49 @@
 		font-weight: 600;
 	}
 
+	&__title-row h1 {
+		min-width: 0;
+		white-space: nowrap;
+		text-wrap: balance;
+
+		@media (max-width: 600px) {
+			white-space: normal;
+		}
+	}
+
 	&__description {
-		min-width: max-content;
+		grid-area: description;
+		grid-column: 1 / -1;
+		grid-row: 2;
+		margin: 0;
+		min-width: 0;
+		color: #646970;
+		font-size: 13px;
+
+		@media (max-width: 600px) {
+			grid-row: 3;
+		}
+	}
+
+	&--placeholder {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+	}
+
+	&__placeholder-heading {
+		margin: 0;
+		color: #1d2327;
+		font-size: 1.5rem;
+		font-weight: 600;
 	}
 
 	&__edit-action-label,
-	&__trash-action-label {
+	&__duplicate-action-label,
+	&__trash-action-label,
+	&__restore-action-label,
+	&__delete-permanently-action-label {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -198,12 +371,18 @@
 
 	// More-menu default: text label.
 	&__edit-action-label-text,
-	&__trash-action-label-text {
+	&__duplicate-action-label-text,
+	&__trash-action-label-text,
+	&__restore-action-label-text,
+	&__delete-permanently-action-label-text {
 		display: inline;
 	}
 
 	&__edit-action-label-icon,
-	&__trash-action-label-icon {
+	&__duplicate-action-label-icon,
+	&__trash-action-label-icon,
+	&__restore-action-label-icon,
+	&__delete-permanently-action-label-icon {
 		display: none;
 		line-height: 0;
 	}
@@ -231,18 +410,33 @@
 		}
 	}
 
-	// Primary row actions (hover edit): icon only, like email-builder.
+	// Primary row actions (hover edit / restore): icon only, like email-builder.
 	.dataviews-item-actions
 		.components-button:not(.dataviews-all-actions-button) {
 		@include action-label-icon-only(
 			"prc-wp-admin-dataview__edit-action-label"
 		);
+		@include action-label-icon-only(
+			"prc-wp-admin-dataview__duplicate-action-label"
+		);
+		@include action-label-icon-only(
+			"prc-wp-admin-dataview__restore-action-label"
+		);
 	}
 
-	// Bulk footer: trash icon only.
+	// Bulk footer: action icons only.
 	.dataviews-bulk-actions-footer__action-buttons {
 		@include action-label-icon-only(
+			"prc-wp-admin-dataview__duplicate-action-label"
+		);
+		@include action-label-icon-only(
 			"prc-wp-admin-dataview__trash-action-label"
+		);
+		@include action-label-icon-only(
+			"prc-wp-admin-dataview__restore-action-label"
+		);
+		@include action-label-icon-only(
+			"prc-wp-admin-dataview__delete-permanently-action-label"
 		);
 	}
 
@@ -271,7 +465,7 @@
 		align-items: center;
 		gap: 8px;
 		min-width: 0;
-		max-width: 100%;
+		max-width: 25rem;
 
 		// renderItemLink keeps the edit <a> as a flex sibling of presence;
 		// allow the anchor to shrink so title ellipsis still applies.
@@ -298,10 +492,32 @@
 		white-space: nowrap;
 	}
 
+	// Table title-cell uses max-width: 25rem. Grid cards are often narrower,
+	// so that cap lets nowrap titles paint over neighboring cards.
+	.dataviews-view-grid {
+		.dataviews-view-grid__title-actions,
+		.prc-wp-admin-dataview__title-cell {
+			display: flex;
+			width: 100%;
+			max-width: 100%;
+			min-width: 0;
+		}
+
+		a.dataviews-title-field,
+		.prc-wp-admin-dataview__title-text {
+			flex: 1 1 auto;
+			min-width: 0;
+			max-width: 100%;
+		}
+	}
+
 	&__presence-stack {
 		display: inline-flex;
 		flex-shrink: 0;
 		align-items: center;
+		isolation: isolate;
+		z-index: 0;
+		position: relative;
 
 		img,
 		.prc-wp-admin-dataview__presence-fallback,
@@ -319,6 +535,19 @@
 		.prc-wp-admin-dataview__presence-fallback:first-child {
 			margin-inline-start: 0;
 		}
+
+		&.is-empty {
+			display: none;
+		}
+	}
+
+	@at-root body.driver-active #{&}__presence-stack.is-empty {
+		display: inline-flex;
+		width: 24px;
+		height: 24px;
+		border: 1px dashed #c3c4c7;
+		border-radius: 9999px;
+		box-sizing: border-box;
 	}
 
 	&__presence-fallback,
@@ -350,12 +579,43 @@
 		min-height: 80px;
 		background: #f0f0f0;
 	}
+
+	.dataviews-view-list__media-wrapper &__featured-image--empty {
+		min-height: 0;
+	}
 }
 
 // Fill Gutenberg Boot's rounded stage (RootSinglePage), not the old wrap Card.
+// Specificity must beat Boot's desktop `height: auto` on `.boot-layout__stage`.
+// Below 782px Boot also `position:fixed` the stage; keep overflow hidden so
+// the table scroller, not the page, moves.
+.boot-layout--single-page .boot-layout__stage:has(.prc-wp-admin-dataview) {
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
+}
+
 .boot-layout__stage > .prc-wp-admin-dataview {
 	height: 100%;
 	min-height: 0;
+}
+
+// Boot pins the stage as position:fixed below 782px. Keep a definite
+// height so .dataviews-layout__container stays the inner scroller.
+@media (max-width: 781px) {
+	.boot-layout--single-page .boot-layout__stage:has(.prc-wp-admin-dataview) {
+		height: calc(100dvh - var(--wp-admin--admin-bar--height, 46px));
+		overflow: hidden;
+	}
+}
+
+// Boot adds 8px surface margin at ≥782px; drop the bottom so the stage
+// does not overflow the pinned #wpcontent slab and create a page scrollbar.
+@media (min-width: 782px) {
+	.boot-layout--single-page:has(.prc-wp-admin-dataview)
+		.boot-layout__surfaces {
+		margin-block-end: 0;
+	}
 }
 
 // Child posts: title indent. Row class is synced in dataviews.jsx

@@ -1,6 +1,6 @@
 {
 	"name": "@prc/wp-admin-dataview",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"description": "DataViews admin list shells for core and shared post types, with a field-provider contract for domain plugins.",
 	"scripts": {
 		"build": "wp-scripts build && wp-scripts build --config webpack.settings.config.js",

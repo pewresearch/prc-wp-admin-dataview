@@ -60,14 +60,21 @@ class Bootstrap {
 		$this->loader = new Loader();
 
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-provider-registry.php';
+		require_once plugin_dir_path( __DIR__ ) . '/includes/class-duplicate-args.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-list-registry.php';
+		require_once plugin_dir_path( __DIR__ ) . '/includes/class-post-duplicator.php';
+		require_once plugin_dir_path( __DIR__ ) . '/includes/class-duplicate-ui.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-settings.php';
+		require_once plugin_dir_path( __DIR__ ) . '/includes/class-search-query.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-rest-controller.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-saved-filters.php';
+		require_once plugin_dir_path( __DIR__ ) . '/includes/class-appearance-preferences.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-post-list.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-parent-post-provider.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-presence-provider.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-taxonomy-fields-provider.php';
+		require_once plugin_dir_path( __DIR__ ) . '/includes/class-field-updates.php';
+		require_once plugin_dir_path( __DIR__ ) . '/includes/class-tours.php';
 
 		$this->lists = new List_Registry();
 	}
@@ -83,13 +90,19 @@ class Bootstrap {
 		// Register after post types and translations are available.
 		$this->loader->add_action( 'init', $this, 'register_domain_lists', 20 );
 
+		$duplicator = new Post_Duplicator( $this->lists );
+
 		new Settings( $this->get_loader(), $this->lists );
-		new REST_Controller( $this->get_loader(), $this->lists );
+		new REST_Controller( $this->get_loader(), $this->lists, $duplicator );
+		new Duplicate_UI( $this->get_loader(), $duplicator );
 		new Saved_Filters( $this->get_loader(), $this->lists );
+		new Appearance_Preferences( $this->get_loader(), $this->lists );
 		new Post_List( $this->get_loader(), $this->lists );
 		new Parent_Post_Provider( $this->get_loader() );
 		new Presence_Provider( $this->get_loader() );
 		new Taxonomy_Fields_Provider( $this->get_loader() );
+		new Field_Updates( $this->get_loader() );
+		new Tours( $this->get_loader(), $this->lists );
 	}
 
 	/**
@@ -111,21 +124,27 @@ class Bootstrap {
 	 *
 	 * Domain CPTs register via `prc_wp_admin_dataview_register_lists`.
 	 *
-	 * @return array<int, array<string, string>>
+	 * @return array<int, array<string, mixed>>
 	 */
 	public static function default_list_configs(): array {
+		$duplicate = array(
+			'includeMeta' => Duplicate_Args::content_include_meta(),
+		);
+
 		return array(
 			array(
 				'postType'  => 'post',
 				'pageSlug'  => 'prc-wp-admin-dataview-post',
 				'menuTitle' => __( 'All Posts', 'prc-wp-admin-dataview' ),
 				'pageTitle' => __( 'All Posts', 'prc-wp-admin-dataview' ),
+				'duplicate' => $duplicate,
 			),
 			array(
 				'postType'  => 'page',
 				'pageSlug'  => 'prc-wp-admin-dataview-page',
 				'menuTitle' => __( 'All Pages', 'prc-wp-admin-dataview' ),
 				'pageTitle' => __( 'All Pages', 'prc-wp-admin-dataview' ),
+				'duplicate' => $duplicate,
 			),
 		);
 	}

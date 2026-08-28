@@ -2,7 +2,7 @@
  * WordPress Dependencies
  */
 import { useCommand } from '@wordpress/commands';
-import { Button, Flex, FlexBlock, Popover } from '@wordpress/components';
+import { Button, Popover } from '@wordpress/components';
 import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
 import { applyFilters } from '@wordpress/hooks';
 import { __, sprintf } from '@wordpress/i18n';
@@ -11,11 +11,12 @@ import { filter, list } from '@wordpress/icons';
 /**
  * Internal Dependencies
  */
-import PostsDataViews, { getDefaultView } from './components/dataviews';
+import useAppearanceView from './appearance/use-appearance-view';
+import PostsDataViews from './components/dataviews';
+import { filtersEqual } from './components/saved-filters/helpers';
 import SavedFiltersShelf from './components/saved-filters/shelf';
 import useSavedFilters from './components/saved-filters/use-saved-filters';
 import { HeaderActionsSlot, PageExtrasSlot } from './slots';
-import { ensureFilteredFieldsVisible } from './utils/ensure-filtered-fields-visible';
 import { syncFiltersToUrl } from './utils/filter-url-sync';
 
 function closeSavedFiltersUnlessModal(onClose) {
@@ -39,6 +40,11 @@ export default function App() {
 		null,
 		boot
 	);
+	const headerActions = applyFilters(
+		'prcWpAdminDataview.headerActions',
+		null,
+		boot
+	);
 	const hideDefaultNewButton =
 		!!boot.hideDefaultNewButton || !!boot.config?.hideDefaultNewButton;
 	const config = useMemo(
@@ -49,9 +55,11 @@ export default function App() {
 		[boot.config, boot.enableDemoProvider]
 	);
 
-	const [view, setView] = useState(() =>
-		ensureFilteredFieldsVisible(getDefaultView(postType))
-	);
+	const { view, onChangeView } = useAppearanceView({
+		postType,
+		config,
+		initialDocument: boot.appearance,
+	});
 	const [shelfOpen, setShelfOpen] = useState(false);
 	const [activeSavedFilterId, setActiveSavedFilterId] = useState(null);
 	const initialSavedFilters = Array.isArray(boot.savedFilters)
@@ -66,18 +74,19 @@ export default function App() {
 
 	useEffect(() => {
 		syncFiltersToUrl(view.filters);
-		// Mount-only: seed shareable URL before the first filter edit.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+	}, [view.filters]);
 
-	const onChangeView = useCallback((next) => {
-		setView((current) => {
-			const resolved = typeof next === 'function' ? next(current) : next;
-			const withColumns = ensureFilteredFieldsVisible(resolved);
-			syncFiltersToUrl(withColumns.filters);
-			return withColumns;
-		});
-	}, []);
+	useEffect(() => {
+		if (!Array.isArray(sets) || sets.length === 0) {
+			return;
+		}
+		const match = sets.find((set) =>
+			filtersEqual(set.filters, view.filters)
+		);
+		if (match) {
+			setActiveSavedFilterId(match.id);
+		}
+	}, [sets, view.filters]);
 
 	const singularLabel = (
 		boot.singularLabel ||
@@ -107,80 +116,89 @@ export default function App() {
 		<div className="prc-wp-admin-dataview">
 			<div className="prc-wp-admin-dataview__layout">
 				<div className="prc-wp-admin-dataview__main">
-					<header className="prc-wp-admin-dataview__header">
-						<Flex align="center" gap={3}>
-							<FlexBlock>
-								<div className="prc-wp-admin-dataview__title-row">
-									<span className="prc-wp-admin-dataview__saved-filters-toggle-wrap">
-										<Button
-											className="prc-wp-admin-dataview__saved-filters-toggle"
-											icon={filter}
-											label={__(
-												'Saved filters',
-												'prc-wp-admin-dataview'
-											)}
-											size="compact"
-											isPressed={shelfOpen}
-											aria-expanded={shelfOpen}
-											onClick={() =>
-												setShelfOpen((open) => !open)
+					<header
+						className="prc-wp-admin-dataview__header"
+						data-prc-tour="dataviews-header"
+					>
+						<div className="prc-wp-admin-dataview__header-grid">
+							<div className="prc-wp-admin-dataview__title-row">
+								<span className="prc-wp-admin-dataview__saved-filters-toggle-wrap">
+									<Button
+										className="prc-wp-admin-dataview__saved-filters-toggle"
+										data-prc-tour="dataviews-saved-filters"
+										icon={filter}
+										label={__(
+											'Saved filters',
+											'prc-wp-admin-dataview'
+										)}
+										size="compact"
+										isPressed={shelfOpen}
+										aria-expanded={shelfOpen}
+										onClick={() =>
+											setShelfOpen((open) => !open)
+										}
+									/>
+									{sets.length > 0 ? (
+										<span
+											className="prc-wp-admin-dataview__saved-filters-badge"
+											aria-hidden="true"
+										>
+											{sets.length}
+										</span>
+									) : null}
+									{shelfOpen ? (
+										<Popover
+											className="prc-wp-admin-dataview__saved-filters-popover"
+											placement="bottom-start"
+											offset={8}
+											focusOnMount="firstElement"
+											onClose={closeShelf}
+											onFocusOutside={() =>
+												closeSavedFiltersUnlessModal(
+													closeShelf
+												)
 											}
-										/>
-										{sets.length > 0 ? (
-											<span
-												className="prc-wp-admin-dataview__saved-filters-badge"
-												aria-hidden="true"
-											>
-												{sets.length}
-											</span>
-										) : null}
-										{shelfOpen ? (
-											<Popover
-												className="prc-wp-admin-dataview__saved-filters-popover"
-												placement="bottom-start"
-												offset={8}
-												focusOnMount="firstElement"
-												onClose={closeShelf}
-												onFocusOutside={() =>
-													closeSavedFiltersUnlessModal(
-														closeShelf
-													)
+										>
+											<SavedFiltersShelf
+												view={view}
+												onChangeView={onChangeView}
+												activeSavedFilterId={
+													activeSavedFilterId
 												}
-											>
-												<SavedFiltersShelf
-													view={view}
-													onChangeView={onChangeView}
-													activeSavedFilterId={
-														activeSavedFilterId
-													}
-													onActiveSavedFilterIdChange={
-														setActiveSavedFilterId
-													}
-													onClose={closeShelf}
-													sets={sets}
-													isSaving={isSaving}
-													createSet={createSet}
-													updateSet={updateSet}
-													deleteSet={deleteSet}
-												/>
-											</Popover>
-										) : null}
-									</span>
-									<h1>{pageTitle}</h1>
-								</div>
-								{pageDescription ? (
-									<div className="prc-wp-admin-dataview__description">
-										{pageDescription}
-									</div>
+												onActiveSavedFilterIdChange={
+													setActiveSavedFilterId
+												}
+												onClose={closeShelf}
+												sets={sets}
+												isSaving={isSaving}
+												createSet={createSet}
+												updateSet={updateSet}
+												deleteSet={deleteSet}
+											/>
+										</Popover>
+									) : null}
+								</span>
+								<h1>{pageTitle}</h1>
+							</div>
+							<div className="prc-wp-admin-dataview__header-actions">
+								{newUrl && !hideDefaultNewButton ? (
+									<Button
+										__next40pxDefaultSize
+										variant="primary"
+										href={newUrl}
+									>
+										{__('Add New', 'prc-wp-admin-dataview')}
+									</Button>
 								) : null}
-							</FlexBlock>
-							{newUrl && !hideDefaultNewButton ? (
-								<Button variant="primary" href={newUrl}>
-									{__('Add New', 'prc-wp-admin-dataview')}
-								</Button>
+								{headerActions}
+								<HeaderActionsSlot />
+							</div>
+							{pageDescription ? (
+								<div className="prc-wp-admin-dataview__description">
+									{pageDescription}
+								</div>
 							) : null}
-							<HeaderActionsSlot />
-						</Flex>
+						</div>
 					</header>
 					<PostsDataViews
 						postType={postType}

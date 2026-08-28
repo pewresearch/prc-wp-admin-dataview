@@ -12,10 +12,11 @@ namespace PRC\Platform\Wp_Admin_Dataview;
  * bare edit.php list URLs (with ?classic=1 escape), and mounts the React app.
  */
 class Post_List {
-	public const SCRIPT_HANDLE     = 'prc-wp-admin-dataview';
-	public const MOUNT_ID          = 'prc-wp-admin-dataview';
-	public const LIST_MODULE_ID    = '@prc/wp-admin-dataview/list';
-	public const PAGE_MODULE_ID    = '@prc/wp-admin-dataview/page';
+	public const SCRIPT_HANDLE      = 'prc-wp-admin-dataview';
+	public const MOUNT_ID           = 'prc-wp-admin-dataview';
+	public const LIST_MODULE_ID     = '@prc/wp-admin-dataview/list';
+	public const PAGE_MODULE_ID     = '@prc/wp-admin-dataview/page';
+	public const MAX_AUTHOR_OPTIONS = 500;
 
 	/**
 	 * List registry.
@@ -121,8 +122,8 @@ class Post_List {
 			}
 
 			$page_slug  = (string) $config['pageSlug'];
-			$page_title = (string) ( $config['pageTitle'] ?: $config['menuTitle'] );
-			$menu_title = (string) ( $config['menuTitle'] ?: $page_title );
+			$page_title = (string) ( ! empty( $config['pageTitle'] ) ? $config['pageTitle'] : $config['menuTitle'] );
+			$menu_title = (string) ( ! empty( $config['menuTitle'] ) ? $config['menuTitle'] : $page_title );
 
 			add_submenu_page(
 				self::get_parent_slug( $post_type, $config ),
@@ -162,8 +163,8 @@ class Post_List {
 			foreach ( $submenu[ $parent ] as $item ) {
 				if ( $source === $item[2] ) {
 					$item[2] = $page_slug;
-					$item[0] = (string) ( $config['menuTitle'] ?: $item[0] );
-					$item[3] = (string) ( $config['pageTitle'] ?: $item[3] );
+					$item[0] = (string) ( ! empty( $config['menuTitle'] ) ? $config['menuTitle'] : $item[0] );
+					$item[3] = (string) ( ! empty( $config['pageTitle'] ) ? $config['pageTitle'] : $item[3] );
 				}
 				if ( isset( $seen[ $item[2] ] ) ) {
 					continue;
@@ -171,7 +172,7 @@ class Post_List {
 				$seen[ $item[2] ] = true;
 				$reordered[]      = $item;
 			}
-			$submenu[ $parent ] = array_values( $reordered );
+			$submenu[ $parent ] = array_values( $reordered ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- rewrite the All X dest for this registered list.
 		}
 	}
 
@@ -263,18 +264,95 @@ class Post_List {
 
 	/**
 	 * Mount node for the React app.
+	 *
+	 * Prints a centered loading heading inside the mount until createRoot
+	 * replaces this markup when the React app mounts.
 	 */
 	public function render_admin_page(): void {
+		$config      = $this->current_list_config();
+		$placeholder = self::get_mount_placeholder_html( $config ?? array() );
+
+		self::print_placeholder_styles();
+
 		if ( self::is_boot_available() ) {
 			self::print_boot_layout_styles();
 			printf(
-				'<div id="%s" class="boot-layout-container"></div>',
-				esc_attr( self::MOUNT_ID )
+				'<div id="%s" class="boot-layout-container">%s</div>',
+				esc_attr( self::MOUNT_ID ),
+				$placeholder // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built with escaped pieces.
 			);
 			return;
 		}
 
-		printf( '<div id="%s"></div>', esc_attr( self::MOUNT_ID ) );
+		printf(
+			'<div id="%s">%s</div>',
+			esc_attr( self::MOUNT_ID ),
+			$placeholder // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built with escaped pieces.
+		);
+	}
+
+	/**
+	 * List config for the current admin page, if registered.
+	 *
+	 * @return array<string, mixed>|null
+	 */
+	private function current_list_config(): ?array {
+		global $plugin_page;
+
+		$page = is_string( $plugin_page ) ? sanitize_key( $plugin_page ) : '';
+		if ( '' === $page ) {
+			$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+		if ( '' === $page ) {
+			return null;
+		}
+
+		return $this->lists->get_by_page_slug( $page );
+	}
+
+	/**
+	 * Add New URL for a list config.
+	 *
+	 * @param array<string, mixed> $config List config.
+	 * @return string
+	 */
+	private static function get_new_url( array $config ): string {
+		if ( array_key_exists( 'newUrl', $config ) && null !== $config['newUrl'] ) {
+			return (string) $config['newUrl'];
+		}
+		$post_type = (string) ( $config['postType'] ?? 'post' );
+		$query     = 'post' === $post_type ? '' : '?post_type=' . $post_type;
+		return admin_url( 'post-new.php' . $query );
+	}
+
+	/**
+	 * Centered loading heading shown until React replaces the mount node.
+	 *
+	 * @param array<string, mixed> $config List config.
+	 * @return string
+	 */
+	private static function get_mount_placeholder_html( array $config ): string {
+		$page_title = '';
+		if ( ! empty( $config['pageTitle'] ) ) {
+			$page_title = (string) $config['pageTitle'];
+		} elseif ( ! empty( $config['menuTitle'] ) ) {
+			$page_title = (string) $config['menuTitle'];
+		}
+
+		if ( '' === $page_title ) {
+			$heading = __( 'Loading…', 'prc-wp-admin-dataview' );
+		} else {
+			$heading = sprintf(
+				/* translators: %s: DataViews page title, e.g. All Posts */
+				__( 'Loading %s…', 'prc-wp-admin-dataview' ),
+				$page_title
+			);
+		}
+
+		return sprintf(
+			'<div class="prc-wp-admin-dataview prc-wp-admin-dataview--placeholder" role="status" aria-busy="true" aria-live="polite"><h1 class="prc-wp-admin-dataview__placeholder-heading">%s</h1></div>',
+			esc_html( $heading )
+		);
 	}
 
 	/**
@@ -365,19 +443,25 @@ class Post_List {
 			$singular_label = strtolower( (string) $pto->labels->singular_name );
 		}
 
+		$can_publish = false;
+		if ( $pto && isset( $pto->cap->publish_posts ) ) {
+			$can_publish = current_user_can( $pto->cap->publish_posts );
+		}
+
 		$localize = array(
 			'postType'           => $post_type,
 			'pageSlug'           => (string) $config['pageSlug'],
 			'singularLabel'      => $singular_label,
 			'classicUrl'         => self::get_classic_url( $post_type ),
-			'newUrl'             => array_key_exists( 'newUrl', $config ) && null !== $config['newUrl']
-				? (string) $config['newUrl']
-				: admin_url( 'post-new.php' . ( 'post' === $post_type ? '' : '?post_type=' . $post_type ) ),
+			'newUrl'             => self::get_new_url( $config ),
 			'hideDefaultNewButton' => ! empty( $config['hideDefaultNewButton'] ),
 			'restPath'           => (string) ( $config['restPath'] ?? '/prc-api/v3/wp-admin-dataview/list' ),
 			'restBase'           => $rest_base,
 			'savedFilters'       => Saved_Filters::get_for_post_type( (int) get_current_user_id(), $post_type ),
+			'appearance'         => Appearance_Preferences::get_for_post_type( (int) get_current_user_id(), $post_type ),
 			'supportsParentFamily' => Parent_Post_Provider::supports_parent_family( $post_type ),
+			'canPublish'         => $can_publish,
+			'authors'            => self::get_author_options( $post_type ),
 			// Status filter options for DataViews; domain providers may override via FILTER_LOCALIZE.
 			'statuses'           => array(
 				array(
@@ -407,11 +491,13 @@ class Post_List {
 					'pageTitle'            => (string) ( $config['pageTitle'] ?? '' ),
 					'restBase'             => $rest_base,
 					'hideDefaultNewButton' => ! empty( $config['hideDefaultNewButton'] ),
+					'duplicate'            => Duplicate_Args::for_client( $config, $post_type ),
 				)
 			),
 		);
 
 		$localize = apply_filters( Provider_Registry::FILTER_LOCALIZE, $localize, $post_type );
+		$localize['statuses'] = self::ensure_trash_status_option( $localize['statuses'] ?? array() );
 
 		wp_localize_script( self::SCRIPT_HANDLE, 'prcWpAdminDataview', $localize );
 
@@ -428,6 +514,70 @@ class Post_List {
 		) {
 			wp_enqueue_command_palette_assets();
 		}
+	}
+
+	/**
+	 * Author select options for DataViews filters.
+	 *
+	 * @param string $post_type Post type.
+	 * @return array<int, array{value: string, label: string}>
+	 */
+	public static function get_author_options( string $post_type ): array {
+		$users = get_users(
+			array(
+				'capability' => self::get_capability( $post_type ),
+				'orderby'    => 'display_name',
+				'order'      => 'ASC',
+				'number'     => self::MAX_AUTHOR_OPTIONS,
+				'fields'     => array( 'ID', 'display_name' ),
+			)
+		);
+
+		if ( ! is_array( $users ) ) {
+			return array();
+		}
+
+		$options = array();
+		foreach ( $users as $user ) {
+			$id = isset( $user->ID ) ? (int) $user->ID : 0;
+			if ( $id <= 0 ) {
+				continue;
+			}
+			$label     = isset( $user->display_name ) ? (string) $user->display_name : '';
+			$options[] = array(
+				'value' => (string) $id,
+				'label' => plain_text( $label ),
+			);
+		}
+
+		return $options;
+	}
+
+	/**
+	 * Append Trash to status filter options when a provider omitted it.
+	 *
+	 * Trash stays off the default list query. Editors must select it.
+	 *
+	 * @param mixed $statuses Localized status options.
+	 * @return array<int, array{value: string, label: string}>
+	 */
+	public static function ensure_trash_status_option( $statuses ): array {
+		if ( ! is_array( $statuses ) ) {
+			$statuses = array();
+		}
+
+		foreach ( $statuses as $option ) {
+			if ( is_array( $option ) && 'trash' === ( $option['value'] ?? '' ) ) {
+				return array_values( $statuses );
+			}
+		}
+
+		$statuses[] = array(
+			'value' => 'trash',
+			'label' => __( 'Trash', 'prc-wp-admin-dataview' ),
+		);
+
+		return $statuses;
 	}
 
 	/**
@@ -536,7 +686,36 @@ class Post_List {
 	}
 
 	/**
-	 * Critical Boot layout CSS. Copied from Gutenberg's generated page-wp-admin.php.
+	 * Critical first-paint CSS for the centered loading heading.
+	 *
+	 * Inlined so the heading is styled before style-index.css arrives.
+	 */
+	private static function print_placeholder_styles(): void {
+		echo '<style>
+			.prc-wp-admin-dataview--placeholder {
+				box-sizing: border-box;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				height: 100%;
+				padding: 16px;
+			}
+			.prc-wp-admin-dataview__placeholder-heading {
+				margin: 0;
+				color: #1d2327;
+				font-size: 1.5rem;
+				font-weight: 600;
+			}
+		</style>';
+	}
+
+	/**
+	 * Critical Boot layout CSS.
+	 *
+	 * Starts from Gutenberg's generated page-wp-admin.php. On desktop the
+	 * content column is pinned under the admin bar. The admin menu stays
+	 * in normal flow so hover flyouts can paint and a long menu can
+	 * scroll with the page.
 	 */
 	private static function print_boot_layout_styles(): void {
 		echo '<style>
@@ -546,12 +725,52 @@ class Post_List {
 			#wpbody-content { padding-bottom: 0; }
 			#wpbody-content > div:not(.boot-layout-container):not(#screen-meta) { display: none; }
 			#wpfooter { display: none; }
+			.boot-layout-container {
+				box-sizing: border-box;
+				position: relative;
+			}
 			.a11y-speak-region { inset-inline-start: -1px; top: -1px; }
 			ul#adminmenu a.wp-has-current-submenu::after,
 			ul#adminmenu > li.current > a.current::after { border-inline-end-color: #fff; }
 			.media-frame select.attachment-filters:last-of-type { width: auto; max-width: 100%; }
 			@media (min-width: 782px) {
 				#wpwrap { overflow-y: initial; }
+				#wpcontent {
+					position: fixed;
+					top: var(--wp-admin--admin-bar--height, 32px);
+					bottom: 0;
+					inset-inline-start: 0;
+					inset-inline-end: 0;
+					width: auto;
+					height: auto;
+					overflow: hidden;
+					z-index: 1;
+				}
+				#wpbody,
+				#wpbody-content,
+				.boot-layout-container {
+					height: 100%;
+					min-height: 0;
+					overflow: hidden;
+				}
+				#prc-wp-admin-dataview.boot-layout-container .boot-layout {
+					height: 100%;
+					min-height: 0;
+					overflow: hidden;
+				}
+				#adminmenuwrap {
+					position: relative;
+					z-index: 10000;
+				}
+			}
+			@media (max-width: 781px) {
+				#prc-wp-admin-dataview.boot-layout-container > .boot-layout {
+					position: relative;
+					inset: auto;
+					height: auto;
+					min-height: 0;
+					overflow: visible;
+				}
 			}
 		</style>';
 	}

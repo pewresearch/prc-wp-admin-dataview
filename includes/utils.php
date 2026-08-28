@@ -2,30 +2,21 @@
 /**
  * Utility functions.
  *
- * @package    PRC\Platform\Wp_Admin_Dataview
+ * @package PRC\Platform\Wp_Admin_Dataview
  */
 
 namespace PRC\Platform\Wp_Admin_Dataview;
 
 /**
- * This is a place for "utility" functions.
- * These are functions meant to be consumed both by this plugin and others, easily.
- */
-
-/**
- * Example utility function.
+ * Convert HTML-flavored text to Unicode plain text.
  *
- * @param string $in Input string.
- * @return string Processed string.
+ * `get_the_title()` runs `wptexturize`, which emits character references.
+ * DataViews interpolates row strings as React text nodes, so decode them
+ * before JSON leaves the REST boundary.
+ *
+ * @param string $value Title or other HTML-flavored string.
+ * @return string Plain text.
  */
-function do_some_utility( $in ) {
-	$out = 'Utility processed: ' . $in;
-	return $out;
+function plain_text( string $value ): string {
+	return html_entity_decode( wp_strip_all_tags( $value ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 }
-/**
- * Then to call this:
- * - In the class, you can use:
- *   $result = do_some_utility( $input );
- * - Outside in other plugins, you can use:
- *   $result = \PRC\Platform\Wp_Admin_Dataview\do_some_utility( $input );
- */

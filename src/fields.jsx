@@ -1,15 +1,44 @@
 /**
  * WordPress Dependencies
  */
-import { TextControl } from '@wordpress/components';
-import { useState } from '@wordpress/element';
 import { applyFilters } from '@wordpress/hooks';
 import { __, _n, sprintf } from '@wordpress/i18n';
+import {
+	drafts,
+	notAllowed,
+	pending,
+	published,
+	scheduled,
+} from '@wordpress/icons';
+
+/**
+ * PRC Dependencies
+ */
+import { StatusDotBadge, STATUS_DOT_COLORS } from '@prc/components';
 
 /**
  * Internal Dependencies
  */
 import { usePresenceEditorsContext } from './presence-context';
+import { fetchTaxonomyTerms } from './utils/fetch-taxonomy-terms';
+import { getStatusBadgeTone } from './utils/status-badge';
+
+const STATUS_BADGE_COLORS = {
+	publish: STATUS_DOT_COLORS.success,
+	draft: STATUS_DOT_COLORS.neutral,
+	future: STATUS_DOT_COLORS.warning,
+	pending: STATUS_DOT_COLORS.warning,
+	private: '#1d2327',
+	trash: STATUS_DOT_COLORS.error,
+};
+
+const STATUS_BADGE_ICONS = {
+	publish: published,
+	draft: drafts,
+	future: scheduled,
+	pending,
+	private: notAllowed,
+};
 
 const MAX_VISIBLE_AVATARS = 3;
 
@@ -89,6 +118,19 @@ function getStatusLabel(value) {
 	return match?.label || value || '—';
 }
 
+function StatusBadge({ status, label }) {
+	const tone = getStatusBadgeTone(status);
+	const color = STATUS_BADGE_COLORS[tone] || STATUS_DOT_COLORS.neutral;
+	return (
+		<StatusDotBadge
+			label={label}
+			color={color}
+			icon={STATUS_BADGE_ICONS[tone]}
+			className={`prc-wp-admin-dataview__status-badge prc-wp-admin-dataview__status-badge--${tone}`}
+		/>
+	);
+}
+
 function getTaxonomyEntries() {
 	const taxonomies = getLocalizedData().taxonomies;
 	if (!taxonomies || typeof taxonomies !== 'object') {
@@ -96,9 +138,10 @@ function getTaxonomyEntries() {
 	}
 	return Object.entries(taxonomies).map(([fieldId, config]) => ({
 		fieldId,
+		taxonomy: config?.taxonomy || fieldId,
 		label: config?.label || fieldId,
-		elements: Array.isArray(config?.elements) ? config.elements : [],
 		defaultVisible: Boolean(config?.defaultVisible),
+		isPrimaryFilter: isLocalizedFlag(config?.isPrimaryFilter),
 	}));
 }
 
@@ -107,52 +150,53 @@ function getTaxonomyLabel(item, fieldId) {
 	return typeof value === 'string' ? value : '';
 }
 
+function getAuthorElements() {
+	return (getLocalizedData().authors || []).map((option) => ({
+		value: String(option.value),
+		label: option.label,
+	}));
+}
+
+function TruncateCell({ children, title }) {
+	return (
+		<span className="prc-wp-admin-dataview__truncate-cell" title={title}>
+			{children}
+		</span>
+	);
+}
+
 function stopRowNav(event) {
 	event?.stopPropagation?.();
 }
 
-function TitleEdit({ data, field, onChange, hideLabelFromVision }) {
-	const [value, setValue] = useState(field.getValue({ item: data }) || '');
-
-	return (
-		<div onClick={stopRowNav} onKeyDown={stopRowNav} role="presentation">
-			<TextControl
-				label={field.label}
-				hideLabelFromVision={hideLabelFromVision}
-				value={value}
-				onChange={(nextValue) => {
-					setValue(nextValue);
-					onChange(field.setValue({ item: data, value: nextValue }));
-				}}
-			/>
-		</div>
-	);
-}
-
 function PresenceStack({ editors }) {
-	if (!editors?.length) {
-		return null;
-	}
-
-	const visible = editors.slice(0, MAX_VISIBLE_AVATARS);
-	const overflow = editors.length - visible.length;
-	const names = editors.map((editor) => editor.displayName).join(', ');
-	const ariaLabel = sprintf(
-		/* translators: %s: comma-separated editor display names */
-		_n(
-			'%s is editing',
-			'%s are editing',
-			editors.length,
-			'prc-wp-admin-dataview'
-		),
-		names
-	);
+	const hasEditors = Boolean(editors?.length);
+	const visible = hasEditors ? editors.slice(0, MAX_VISIBLE_AVATARS) : [];
+	const overflow = hasEditors ? editors.length - visible.length : 0;
+	const names = hasEditors
+		? editors.map((editor) => editor.displayName).join(', ')
+		: '';
+	const ariaLabel = hasEditors
+		? sprintf(
+				/* translators: %s: comma-separated editor display names */
+				_n(
+					'%s is editing',
+					'%s are editing',
+					editors.length,
+					'prc-wp-admin-dataview'
+				),
+				names
+			)
+		: __('No one else is editing', 'prc-wp-admin-dataview');
 
 	return (
 		<span
-			className="prc-wp-admin-dataview__presence-stack"
+			className={`prc-wp-admin-dataview__presence-stack${
+				hasEditors ? '' : ' is-empty'
+			}`}
+			data-prc-tour="dataviews-presence"
 			aria-label={ariaLabel}
-			title={names}
+			title={hasEditors ? names : undefined}
 			role="img"
 		>
 			{visible.map((editor, index) =>
@@ -194,8 +238,6 @@ function PresenceStack({ editors }) {
 }
 
 function TitleCell({ item }) {
-	const editorsByPostId = usePresenceEditorsContext();
-	const editors = editorsByPostId?.get?.(Number(item.id)) || [];
 	const title = item.title || __('(no title)', 'prc-wp-admin-dataview');
 	const isChild = Number(item.parentPostId) > 0;
 	const titleClassName = `prc-wp-admin-dataview__title-text${
@@ -205,15 +247,34 @@ function TitleCell({ item }) {
 	// Rows with edit_url use renderItemLink, which places PresenceStack outside
 	// the edit <a>. Keep presence here only for non-clickable rows.
 	if (item.edit_url) {
-		return <span className={titleClassName}>{title}</span>;
+		return (
+			<span className={titleClassName} title={title}>
+				{title}
+			</span>
+		);
 	}
 
 	return (
 		<div className="prc-wp-admin-dataview__title-cell">
-			<span className={titleClassName}>{title}</span>
-			<PresenceStack editors={editors} />
+			<span className={titleClassName} title={title}>
+				{title}
+			</span>
+			<TitlePresence item={item} />
 		</div>
 	);
+}
+
+/**
+ * Active-editor avatars for a list row title.
+ *
+ * @param {Object} props      Component props.
+ * @param {Object} props.item List row.
+ * @return {Object|null} Presence stack.
+ */
+export function TitlePresence({ item }) {
+	const editorsByPostId = usePresenceEditorsContext();
+	const editors = editorsByPostId?.get?.(Number(item.id)) || [];
+	return <PresenceStack editors={editors} />;
 }
 
 /**
@@ -288,13 +349,28 @@ export function getDefaultVisibleFields() {
 	);
 }
 
-export default function getFields({
-	postType,
-	config,
-	updateField,
-	onRefresh,
-	onFilterByParent,
-}) {
+/**
+ * Build appearance capabilities from the live provider field registry.
+ *
+ * @param {Object} options          Field options.
+ * @param {string} options.postType Post type.
+ * @param {Object} options.config   List config.
+ * @return {{knownIds: Set<string>, sortableIds: Set<string>}} Capabilities.
+ */
+export function getFieldCapabilities({ postType, config }) {
+	const fields = getFields({ postType, config });
+	return {
+		knownIds: new Set(fields.map((field) => field.id)),
+		sortableIds: new Set(
+			fields
+				.filter((field) => field.enableSorting !== false)
+				.map((field) => field.id)
+		),
+	};
+}
+
+export default function getFields({ postType, config, onFilterByParent }) {
+	const authorElements = getAuthorElements();
 	const baseFields = [
 		{
 			id: 'featuredImage',
@@ -302,6 +378,7 @@ export default function getFields({
 			enableSorting: false,
 			enableHiding: true,
 			filterBy: false,
+			readOnly: true,
 			getValue: ({ item }) => item.featuredImage || '',
 			render: ({ item }) => <FeaturedImageField item={item} />,
 		},
@@ -313,13 +390,6 @@ export default function getFields({
 			enableSorting: true,
 			enableGlobalSearch: true,
 			getValue: ({ item }) => item.title || '',
-			setValue: ({ item, value }) => {
-				updateField?.(item.id, 'title', value).then(() => {
-					onRefresh?.();
-				});
-				return { title: value };
-			},
-			Edit: TitleEdit,
 			render: ({ item }) => <TitleCell item={item} />,
 		},
 		{
@@ -333,19 +403,35 @@ export default function getFields({
 			},
 			enableSorting: false,
 			getValue: ({ item }) => item.status || '',
-			render: ({ item }) => <span>{getStatusLabel(item.status)}</span>,
+			render: ({ item }) => (
+				<StatusBadge
+					status={item.status}
+					label={getStatusLabel(item.status)}
+				/>
+			),
 		},
 		{
 			id: 'author',
 			label: __('Author', 'prc-wp-admin-dataview'),
 			type: 'text',
+			readOnly: true,
 			enableSorting: true,
-			getValue: ({ item }) => item.author || '',
+			elements: authorElements,
+			filterBy:
+				authorElements.length > 0
+					? { operators: ['isAny', 'isNone'] }
+					: false,
+			getValue: ({ item }) => {
+				const id = Number(item.authorId);
+				return Number.isInteger(id) && id > 0 ? String(id) : '';
+			},
+			render: ({ item }) => item.author || '—',
 		},
 		{
 			id: 'date',
 			label: __('Date', 'prc-wp-admin-dataview'),
 			type: 'datetime',
+			readOnly: true,
 			enableSorting: true,
 			getValue: ({ item }) => item.date || '',
 			render: ({ item }) => {
@@ -362,6 +448,7 @@ export default function getFields({
 			id: 'parentPost',
 			label: __('Parent', 'prc-wp-admin-dataview'),
 			type: 'text',
+			readOnly: true,
 			enableSorting: false,
 			elements: postType === 'post' ? PARENT_POST_ELEMENTS : undefined,
 			filterBy:
@@ -397,6 +484,7 @@ export default function getFields({
 			id: 'parentFamily',
 			label: __('Parent ID', 'prc-wp-admin-dataview'),
 			type: 'integer',
+			readOnly: true,
 			enableSorting: false,
 			enableHiding: false,
 			filterBy: { operators: ['is'] },
@@ -409,6 +497,7 @@ export default function getFields({
 		baseFields.push({
 			id: 'activeEditors',
 			label: __('Active editors', 'prc-wp-admin-dataview'),
+			readOnly: true,
 			elements: [
 				{
 					value: 'active',
@@ -433,17 +522,22 @@ export default function getFields({
 		baseFields.push({
 			id: entry.fieldId,
 			label: entry.label,
-			elements: entry.elements,
-			filterBy:
-				entry.elements.length > 0
-					? {
-							operators: ['isAny'],
-							isPrimary: true,
-						}
-					: false,
+			readOnly: true,
+			filterBy: {
+				operators: ['isAny'],
+				isPrimary: entry.isPrimaryFilter,
+			},
+			getElements: () => fetchTaxonomyTerms(entry.taxonomy, postType),
 			enableSorting: false,
 			getValue: ({ item }) => getTaxonomyLabel(item, entry.fieldId),
-			render: ({ item }) => getTaxonomyLabel(item, entry.fieldId) || '—',
+			render: ({ item }) => {
+				const label = getTaxonomyLabel(item, entry.fieldId);
+				return (
+					<TruncateCell title={label || undefined}>
+						{label || '—'}
+					</TruncateCell>
+				);
+			},
 		});
 	}
 
@@ -451,6 +545,7 @@ export default function getFields({
 		id: 'id',
 		label: __('ID', 'prc-wp-admin-dataview'),
 		type: 'integer',
+		readOnly: true,
 		enableSorting: true,
 		getValue: ({ item }) => item.id,
 	});

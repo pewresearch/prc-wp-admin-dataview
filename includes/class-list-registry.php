@@ -31,16 +31,16 @@ class List_Registry {
 			return;
 		}
 
-		$this->lists[ $post_type ] = array_merge(
+		$merged = array_merge(
 			array(
-				'postType'            => $post_type,
-				'pageSlug'            => $page_slug,
-				'menuTitle'           => '',
-				'pageTitle'           => '',
-				'restPath'            => '/prc-api/v3/wp-admin-dataview/list',
+				'postType'             => $post_type,
+				'pageSlug'             => $page_slug,
+				'menuTitle'            => '',
+				'pageTitle'            => '',
+				'restPath'             => '/prc-api/v3/wp-admin-dataview/list',
 				'hideDefaultNewButton' => false,
-				'menuParent'          => '',
-				'newUrl'              => null,
+				'menuParent'           => '',
+				'newUrl'               => null,
 			),
 			$config,
 			array(
@@ -48,6 +48,9 @@ class List_Registry {
 				'pageSlug' => $page_slug,
 			)
 		);
+		$merged['duplicate'] = Duplicate_Args::normalize( $config['duplicate'] ?? array() );
+
+		$this->lists[ $post_type ] = $merged;
 
 		if ( function_exists( 'add_post_type_support' ) ) {
 			add_post_type_support( $post_type, 'prc-wp-admin-dataview' );

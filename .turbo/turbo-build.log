@@ -1,37 +1,37 @@
 
-> @prc/wp-admin-dataview@1.0.0 build
+> @prc/wp-admin-dataview@1.1.0 build
 > wp-scripts build && wp-scripts build --config webpack.settings.config.js
 
-assets by chunk 364 KiB (name: index)
-  asset [1m[33mindex.js[39m[22m [1m[33m363 KiB[39m[22m [1m[32m[emitted][39m[22m [1m[32m[minimized][39m[22m [1m[33m[big][39m[22m (name: index)
-  asset [1m[32mindex.asset.php[39m[22m 374 bytes [1m[32m[emitted][39m[22m (name: index)
-assets by path [1m[32m./*.css[39m[22m 185 KiB
-  asset [1m[32m./style-index-rtl.css[39m[22m 92.7 KiB [1m[32m[emitted][39m[22m (name: ./style-index) (id hint: style)
-  asset [1m[32m./style-index.css[39m[22m 92.7 KiB [1m[32m[emitted][39m[22m (name: ./style-index) (id hint: style)
-Entrypoint [1mindex[39m[22m [1m[33m[big][39m[22m 549 KiB = [1m[32m./style-index.css[39m[22m 92.7 KiB [1m[32m./style-index-rtl.css[39m[22m 92.7 KiB [1m[32mindex.js[39m[22m 363 KiB [1m[32mindex.asset.php[39m[22m 374 bytes
-orphan modules 4.74 MiB (javascript) 937 bytes (runtime) [1m[33m[orphan][39m[22m 2267 modules
-runtime modules 4.49 KiB 7 modules
-built modules 1.12 MiB (javascript) 92.7 KiB (css/mini-extract) [1m[33m[built][39m[22m
-  cacheable modules 13 KiB (javascript) 92.7 KiB (css/mini-extract)
-    modules by path [1m../../node_modules/use-sync-external-store/[39m[22m 5.03 KiB
-      modules by path [1m../../node_modules/use-sync-external-store/shim/*.js[39m[22m 496 bytes 2 modules
-      modules by path [1m../../node_modules/use-sync-external-store/cjs/[39m[22m 4.54 KiB
-        [1m../../node_modules/use-sync-external-store/cjs/use-sync-external-store-shim...(truncated)[39m[22m 1.92 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-        [1m../../node_modules/use-sync-external-store/cjs/use-sync-external-store-shim/with...(truncated)[39m[22m 2.62 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-    css ../../node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[3].use[1]!../../node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[3].use[2]!../../node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[3].use[3]![1m./src/style.scss[39m[22m 92.7 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-    [1m../../node_modules/remove-accents/index.js[39m[22m 6.07 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-    [1m../../node_modules/fast-deep-equal/es6/index.js[39m[22m 1.89 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-  [1m./src/index.js + 375 modules[39m[22m 1.11 MiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+assets by chunk 2.2 MiB (name: index)
+  asset [1m[33mindex.js[39m[22m [1m[33m2.2 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[32m[minimized][39m[22m [1m[33m[big][39m[22m (name: index)
+  asset [1m[32mindex.asset.php[39m[22m 412 bytes [1m[32m[emitted][39m[22m (name: index)
+assets by path [1m[32m./*.css[39m[22m 201 KiB
+  asset [1m[32m./style-index-rtl.css[39m[22m 101 KiB [1m[32m[emitted][39m[22m (name: ./style-index) (id hint: style)
+  asset [1m[32m./style-index.css[39m[22m 101 KiB [1m[32m[emitted][39m[22m (name: ./style-index) (id hint: style)
+Entrypoint [1mindex[39m[22m [1m[33m[big][39m[22m 2.4 MiB = [1m[32m./style-index.css[39m[22m 101 KiB [1m[32m./style-index-rtl.css[39m[22m 101 KiB [1m[32mindex.js[39m[22m 2.2 MiB [1m[32mindex.asset.php[39m[22m 412 bytes
+orphan modules 10.2 MiB (javascript) 937 bytes (runtime) [1m[33m[orphan][39m[22m 4178 modules
+runtime modules 4.53 KiB 8 modules
+built modules 4.52 MiB (javascript) 101 KiB (css/mini-extract) [1m[33m[built][39m[22m
+  modules by path [1m../../node_modules/[39m[22m 30.4 KiB
+    modules by path [1m../../node_modules/use-sync-external-store/[39m[22m 5.03 KiB 4 modules
+    modules by path [1m../../node_modules/hoist-non-react-statics/[39m[22m 5.36 KiB
+      [1m../../node_modules/hoist-non-react-statics/dist/hoist-non-react-statics.cjs.js[39m[22m 2.68 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+      + 2 modules
+    + 5 modules
+  modules by path [1m./src/[39m[22m 4.49 MiB (javascript) 101 KiB (css/mini-extract)
+    [1m./src/index.js + 1008 modules[39m[22m 4.49 MiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+    css ../../node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[3].use[1]!../../node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[3].use[2]!../../node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[3].use[3]![1m./src/style.scss[39m[22m 101 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
   [1mexternal "React"[39m[22m 42 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+  [1mexternal "ReactDOM"[39m[22m 42 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
 
 [1m[33mWARNING[39m[22m in [1masset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
 This can impact web performance.
 Assets: 
-  index.js (363 KiB)[39m[22m
+  index.js (2.2 MiB)[39m[22m
 
 [1m[33mWARNING[39m[22m in [1mentrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
 Entrypoints:
-  index (549 KiB)
+  index (2.4 MiB)
       ./style-index.css
       ./style-index-rtl.css
       index.js
@@ -42,10 +42,10 @@ Entrypoints:
 You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
 For more info visit https://webpack.js.org/guides/code-splitting/[39m[22m
 
-webpack 5.106.2 compiled with [1m[33m3 warnings[39m[22m in 12067 ms
+webpack 5.106.2 compiled with [1m[33m3 warnings[39m[22m in 12200 ms
 asset [1m[32mindex.js[39m[22m 1.44 KiB [1m[32m[emitted][39m[22m [1m[32m[minimized][39m[22m (name: index)
 asset [1m[32mindex.asset.php[39m[22m 157 bytes [1m[32m[emitted][39m[22m (name: index)
 Entrypoint [1mindex[39m[22m 1.6 KiB = [1m[32mindex.js[39m[22m 1.44 KiB [1m[32mindex.asset.php[39m[22m 157 bytes
 orphan modules 2.58 KiB [1m[33m[orphan][39m[22m 8 modules
 [1m./src/settings/index.tsx + 8 modules[39m[22m 2.73 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 749 ms
+webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 315 ms
