@@ -716,6 +716,10 @@ class Post_List {
 	 * content column is pinned under the admin bar. The admin menu stays
 	 * in normal flow so hover flyouts can paint and a long menu can
 	 * scroll with the page.
+	 *
+	 * #wpcontent is position:fixed, which creates a stacking context.
+	 * In WP 7.1 #wpadminbar is a descendant of #wpcontent, so raise it
+	 * onto body before applying a sidebar z-index above that context.
 	 */
 	private static function print_boot_layout_styles(): void {
 		echo '<style>
@@ -762,6 +766,9 @@ class Post_List {
 					position: relative;
 					z-index: 10000;
 				}
+				#wpadminbar {
+					z-index: 10001;
+				}
 			}
 			@media (max-width: 781px) {
 				#prc-wp-admin-dataview.boot-layout-container > .boot-layout {
@@ -773,6 +780,9 @@ class Post_List {
 				}
 			}
 		</style>';
+		wp_print_inline_script_tag(
+			'(function () { var bar = document.getElementById( "wpadminbar" ); if ( bar && bar.parentNode !== document.body ) { document.body.insertBefore( bar, document.body.firstChild ); } })();'
+		);
 	}
 
 	/**

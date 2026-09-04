@@ -96,7 +96,6 @@ class Bootstrap {
 		new REST_Controller( $this->get_loader(), $this->lists, $duplicator );
 		new Duplicate_UI( $this->get_loader(), $duplicator );
 		new Saved_Filters( $this->get_loader(), $this->lists );
-		new Appearance_Preferences( $this->get_loader(), $this->lists );
 		new Post_List( $this->get_loader(), $this->lists );
 		new Parent_Post_Provider( $this->get_loader() );
 		new Presence_Provider( $this->get_loader() );

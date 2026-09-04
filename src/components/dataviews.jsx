@@ -15,7 +15,7 @@ import { closeSmall } from '@wordpress/icons';
  * Internal Dependencies
  */
 import getActions from '../actions';
-import BulkEditModal from './bulk-edit-modal';
+import { getDefaultLayoutType } from '../appearance/storage';
 import getFields, {
 	applyParentFamilyFilter,
 	createItemLinkRenderer,
@@ -30,6 +30,7 @@ import {
 	urlHasFilterParams,
 } from '../utils/filter-url-sync';
 import { getEditableFields } from '../utils/simple-edit-fields';
+import BulkEditModal from './bulk-edit-modal';
 
 const DEFAULT_LAYOUTS = {
 	table: {
@@ -86,7 +87,7 @@ export function getDefaultView(postType) {
 	}
 
 	return {
-		type: 'table',
+		type: getDefaultLayoutType(),
 		page: 1,
 		perPage: 20,
 		sort: {

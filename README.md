@@ -5,7 +5,7 @@ Shared DataViews admin list shells for core and shared post types, plus a field-
 ## What it does
 
 - Replaces the classic `edit.php` list for `post` and `page` with a DataViews screen by default.
-- Lets editors switch among table, grid, and list layouts. The last layout persists per user and post type.
+- Lets editors switch among table, grid, and list layouts. The last layout persists per browser and post type (localStorage).
 - Mounts that screen through Gutenberg's `@wordpress/boot` `initSinglePage` runtime when the Boot script module is available (wp-admin chrome stays; Boot owns the stage layout, router `?p=`, and snackbars). Do not npm-install or webpack-bundle `@wordpress/boot`; consume Gutenberg's registered script module only. If Boot is missing, the classic bundle still `createRoot`s `#prc-wp-admin-dataview`.
 - Keeps `?classic=1` so bulk actions, screen options, Empty Trash, and Quick Edit stay reachable. On DataViews list screens, open the WordPress command palette (Ctrl/Cmd+K) and run **Switch to classic {type} table** (for example **Switch to classic post table**).
 - Renders the Status column as stop-light badges (Gutenberg PostStatus icons or a colored dot, plus matching label) so editors can scan Published vs Draft at a glance.
@@ -89,7 +89,6 @@ The shell entry exports `HeaderActionsFill`, `PageExtrasFill`, `emitPageExtra`, 
     - `POST /prc-api/v3/wp-admin-dataview/saved-filters` with `{ post_type, name, filters }`
     - `PUT /prc-api/v3/wp-admin-dataview/saved-filters/{id}?post_type=` with `{ name? , filters? }`
     - `DELETE /prc-api/v3/wp-admin-dataview/saved-filters/{id}?post_type=`
-- `PUT /prc-api/v3/wp-admin-dataview/appearance` with `{ post_type, document }`
 
 ### Saved filters popover
 
@@ -112,7 +111,11 @@ Unknown statuses fall back to the draft tone. Bulk edit still writes raw `status
 
 ### Appearance persistence
 
-DataViews appearance settings persist per user and post type. The sparse user-meta document stores only settings that differ from current provider defaults, including last-used filters and the last table, grid, or list layout. Search and pagination stay URL or session state. Explicit `dvf_*` / `status=` URL params still win for that visit and are not written to the document unless the user then changes filters.
+DataViews appearance settings persist in browser `localStorage` per post type (`prcWpAdminDataview.appearance.${postType}`). The sparse document stores only settings that differ from current provider defaults, including last-used filters and the last table, grid, or list layout. Search and pagination stay URL or session state. Explicit `dvf_*` / `status=` URL params still win for that visit and are not written to the document unless the user then changes filters.
+
+When a browser has no stored document, the list seeds once from the existing user-meta appearance (localized as `boot.appearance`) and then writes that seed to `localStorage`. After the first write, this browser stops reading stale user meta.
+
+Narrow viewports default to list layout (WordPress `medium`, `max-width: 782px`) until the editor picks a layout. Stored mode still wins. Named saved-filter presets remain user meta.
 
 ## Register another post type
 
