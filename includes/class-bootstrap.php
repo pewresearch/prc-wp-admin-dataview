@@ -66,6 +66,7 @@ class Bootstrap {
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-duplicate-ui.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-settings.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-search-query.php';
+		require_once plugin_dir_path( __DIR__ ) . '/includes/class-date-query.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-rest-controller.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-saved-filters.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-appearance-preferences.php';
@@ -94,6 +95,7 @@ class Bootstrap {
 
 		new Settings( $this->get_loader(), $this->lists );
 		new REST_Controller( $this->get_loader(), $this->lists, $duplicator );
+		new Date_Query( $this->get_loader() );
 		new Duplicate_UI( $this->get_loader(), $duplicator );
 		new Saved_Filters( $this->get_loader(), $this->lists );
 		new Post_List( $this->get_loader(), $this->lists );

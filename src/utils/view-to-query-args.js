@@ -6,8 +6,55 @@ const ORDERBY_MAP = {
 	id: 'ID',
 };
 
+const DATE_DAY_PREFIX = /^(\d{4}-\d{2}-\d{2})/;
+
 // Trash is available in the status filter but is not part of the default query.
 export const DEFAULT_LIST_STATUSES = 'publish,draft,pending,private,future';
+
+function firstScalar(value) {
+	if (Array.isArray(value)) {
+		return value[0];
+	}
+	return value;
+}
+
+function dateTimeValue(value) {
+	const raw = firstScalar(value);
+	return typeof raw === 'string' ? raw : '';
+}
+
+function calendarDay(value) {
+	const match = dateTimeValue(value).match(DATE_DAY_PREFIX);
+	return match ? match[1] : '';
+}
+
+const DATE_OPERATORS = {
+	on(args, value) {
+		const day = calendarDay(value);
+		if (day) {
+			args.date_on = day;
+		}
+	},
+	before(args, value) {
+		const bound = dateTimeValue(value);
+		if (bound) {
+			args.before = bound;
+		}
+	},
+	after(args, value) {
+		const bound = dateTimeValue(value);
+		if (bound) {
+			args.after = bound;
+		}
+	},
+};
+
+function applyDateFilter(args, filter) {
+	const apply = DATE_OPERATORS[filter.operator];
+	if (apply) {
+		apply(args, filter.value);
+	}
+}
 
 export function viewToQueryArgs(view, postType) {
 	const args = {
@@ -25,6 +72,11 @@ export function viewToQueryArgs(view, postType) {
 	args.order = view.sort?.direction || 'desc';
 
 	view.filters?.forEach((filter) => {
+		if (filter.field === 'date') {
+			applyDateFilter(args, filter);
+			return;
+		}
+
 		const values = Array.isArray(filter.value)
 			? filter.value
 			: [filter.value];

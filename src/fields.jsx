@@ -433,6 +433,9 @@ export default function getFields({ postType, config, onFilterByParent }) {
 			type: 'datetime',
 			readOnly: true,
 			enableSorting: true,
+			filterBy: {
+				operators: ['on', 'before', 'after'],
+			},
 			getValue: ({ item }) => item.date || '',
 			render: ({ item }) => {
 				if (!item.date) {

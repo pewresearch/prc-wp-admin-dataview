@@ -112,6 +112,21 @@ class REST_Controller {
 						'required'          => false,
 						'sanitize_callback' => 'sanitize_text_field',
 					),
+					'after'          => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'before'         => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'date_on'        => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 				),
 			)
 		);
