@@ -165,7 +165,7 @@ rather than only the loaded page.
 
 ## Host alignment
 
-Owned plugins pin `@wordpress/dataviews` to the host Gutenberg components major. Today that is `18.1.0` against Gutenberg `23.9.0` (`@wordpress/components` 40). Run `npm run check:dataviews-host` before bumping either side. List and settings screens declare a `wp-theme` style dependency so `--wpds-*` tokens load with DataViews CSS. Webpack bundles `@wordpress/kebab-case` because that package does not register a `wp-kebab-case` classic script on Gutenberg 23.9 or WordPress 7.1.
+Owned plugins pin `@wordpress/dataviews` to the host Gutenberg components major. Today that is `18.1.0` against Gutenberg `23.9.0` (`@wordpress/components` 40). Root `package.json` also pins `@wordpress/ui` to `0.21.0` and `@base-ui/react` to `1.8.0` (the copies DataViews 18.1 / `@wordpress/dataviews/wp` need) and overrides the hoisted copies so webpack does not resolve older nested installs. Run `npm run check:dataviews-host` before bumping either side. List and settings screens declare a `wp-theme` style dependency so `--wpds-*` tokens load with DataViews CSS. Webpack bundles `@wordpress/kebab-case` because that package does not register a `wp-kebab-case` classic script on Gutenberg 23.9 or WordPress 7.1.
 
 ## Build
 
