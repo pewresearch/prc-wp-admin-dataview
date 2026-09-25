@@ -35,6 +35,7 @@ class Post_List {
 		$this->lists = $lists;
 		$loader->add_action( 'admin_menu', $this, 'register_admin_pages' );
 		$loader->add_action( 'admin_menu', $this, 'rewrite_menu_destinations', 1000 );
+		$loader->add_action( 'admin_menu', $this, 'position_menu_items', 1001 );
 		$loader->add_action( 'admin_enqueue_scripts', $this, 'enqueue_admin_assets' );
 		$loader->add_action( 'load-edit.php', $this, 'redirect_classic_list_to_dataviews' );
 		$loader->add_filter( 'parent_file', $this, 'filter_parent_file' );
@@ -146,7 +147,7 @@ class Post_List {
 
 		foreach ( $this->lists->all() as $config ) {
 			$post_type = (string) $config['postType'];
-			if ( ! Settings::is_enabled( $post_type ) ) {
+			if ( List_Registry::is_collection( $config ) || ! Settings::is_enabled( $post_type ) ) {
 				continue;
 			}
 
@@ -177,6 +178,40 @@ class Post_List {
 	}
 
 	/**
+	 * Move list menu items that set `menuAfter` directly after that submenu slug.
+	 *
+	 * @hook admin_menu
+	 */
+	public function position_menu_items(): void {
+		global $submenu;
+
+		foreach ( $this->lists->all() as $config ) {
+			$anchor = (string) ( $config['menuAfter'] ?? '' );
+			if ( '' === $anchor || ! Settings::is_enabled( (string) $config['postType'] ) ) {
+				continue;
+			}
+
+			$parent = self::get_parent_slug( (string) $config['postType'], $config );
+			$items  = $submenu[ $parent ] ?? null;
+			if ( ! is_array( $items ) ) {
+				continue;
+			}
+			$items = array_values( $items );
+			$slugs = array_column( $items, 2 );
+
+			$from = array_search( (string) $config['pageSlug'], $slugs, true );
+			if ( false === $from || false === array_search( $anchor, $slugs, true ) ) {
+				continue;
+			}
+
+			$moved = array_splice( $items, $from, 1 );
+			$to    = array_search( $anchor, array_column( $items, 2 ), true );
+			array_splice( $items, $to + 1, 0, $moved );
+			$submenu[ $parent ] = $items; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- reorder this registered list's menu item.
+		}
+	}
+
+	/**
 	 * Redirect classic list tables to DataViews.
 	 *
 	 * Guard order: POST, page=, classic=1, then registered post type.
@@ -203,7 +238,7 @@ class Post_List {
 		}
 
 		$config = $this->lists->get( $post_type );
-		if ( null === $config ) {
+		if ( null === $config || List_Registry::is_collection( $config ) ) {
 			return;
 		}
 
@@ -425,7 +460,41 @@ class Post_List {
 			);
 		}
 
+		wp_localize_script(
+			self::SCRIPT_HANDLE,
+			'prcWpAdminDataview',
+			self::get_localize_data( $config, (int) get_current_user_id() )
+		);
+
+		if ( $use_boot ) {
+			$this->enqueue_boot_runtime( $version );
+		}
+
+		// WordPress 7.0 already hooks this on admin_enqueue_scripts. Calling it
+		// again appends a second initializeCommandPalette() and the two CommandMenus
+		// close each other. Only enqueue when Core (or Gutenberg) did not.
+		if (
+			function_exists( 'wp_enqueue_command_palette_assets' ) &&
+			! has_action( 'admin_enqueue_scripts', 'wp_enqueue_command_palette_assets' )
+		) {
+			wp_enqueue_command_palette_assets();
+		}
+	}
+
+	/**
+	 * Boot data for `window.prcWpAdminDataview`.
+	 *
+	 * @param array<string, mixed> $config  Registered list config.
+	 * @param int                  $user_id Current user id.
+	 * @return array<string, mixed>
+	 */
+	public static function get_localize_data( array $config, int $user_id ): array {
 		$post_type = (string) $config['postType'];
+
+		if ( List_Registry::is_collection( $config ) ) {
+			return self::get_collection_localize_data( $config, $user_id );
+		}
+
 		$pto       = get_post_type_object( $post_type );
 		$rest_base = '';
 		if ( $pto && ! empty( $pto->rest_base ) ) {
@@ -457,8 +526,8 @@ class Post_List {
 			'hideDefaultNewButton' => ! empty( $config['hideDefaultNewButton'] ),
 			'restPath'           => (string) ( $config['restPath'] ?? '/prc-api/v3/wp-admin-dataview/list' ),
 			'restBase'           => $rest_base,
-			'savedFilters'       => Saved_Filters::get_for_post_type( (int) get_current_user_id(), $post_type ),
-			'appearance'         => Appearance_Preferences::get_for_post_type( (int) get_current_user_id(), $post_type ),
+			'savedFilters'       => Saved_Filters::get_for_post_type( $user_id, $post_type ),
+			'appearance'         => Appearance_Preferences::get_for_post_type( $user_id, $post_type ),
 			'supportsParentFamily' => Parent_Post_Provider::supports_parent_family( $post_type ),
 			'canPublish'         => $can_publish,
 			'authors'            => self::get_author_options( $post_type ),
@@ -499,21 +568,50 @@ class Post_List {
 		$localize = apply_filters( Provider_Registry::FILTER_LOCALIZE, $localize, $post_type );
 		$localize['statuses'] = self::ensure_trash_status_option( $localize['statuses'] ?? array() );
 
-		wp_localize_script( self::SCRIPT_HANDLE, 'prcWpAdminDataview', $localize );
+		return $localize;
+	}
 
-		if ( $use_boot ) {
-			$this->enqueue_boot_runtime( $version );
-		}
+	/**
+	 * Boot data for a non-post collection list.
+	 *
+	 * Collections have no classic screen, authors, statuses, trash, or duplicate.
+	 *
+	 * @param array<string, mixed> $config  Registered collection config.
+	 * @param int                  $user_id Current user id.
+	 * @return array<string, mixed>
+	 */
+	private static function get_collection_localize_data( array $config, int $user_id ): array {
+		$list_id = (string) $config['postType'];
+		$label   = (string) ( ! empty( $config['singularLabel'] ) ? $config['singularLabel'] : $list_id );
 
-		// WordPress 7.0 already hooks this on admin_enqueue_scripts. Calling it
-		// again appends a second initializeCommandPalette() and the two CommandMenus
-		// close each other. Only enqueue when Core (or Gutenberg) did not.
-		if (
-			function_exists( 'wp_enqueue_command_palette_assets' ) &&
-			! has_action( 'admin_enqueue_scripts', 'wp_enqueue_command_palette_assets' )
-		) {
-			wp_enqueue_command_palette_assets();
-		}
+		$localize = array(
+			'postType'             => $list_id,
+			'kind'                 => List_Registry::KIND_COLLECTION,
+			'pageSlug'             => (string) $config['pageSlug'],
+			'singularLabel'        => strtolower( $label ),
+			'classicUrl'           => '',
+			'newUrl'               => '',
+			'hideDefaultNewButton' => true,
+			'restPath'             => (string) $config['restPath'],
+			'restBase'             => '',
+			'savedFilters'         => Saved_Filters::get_for_post_type( $user_id, $list_id ),
+			'appearance'           => Appearance_Preferences::get_for_post_type( $user_id, $list_id ),
+			'supportsParentFamily' => false,
+			'canPublish'           => false,
+			'authors'              => array(),
+			'statuses'             => array(),
+			'config'               => array_merge(
+				$config,
+				array(
+					'pageTitle'            => (string) ( $config['pageTitle'] ?? '' ),
+					'restBase'             => '',
+					'hideDefaultNewButton' => true,
+					'duplicate'            => array( 'enabled' => false ),
+				)
+			),
+		);
+
+		return apply_filters( Provider_Registry::FILTER_LOCALIZE, $localize, $list_id );
 	}
 
 	/**

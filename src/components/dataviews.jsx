@@ -7,7 +7,7 @@ import { DataViews } from '@wordpress/dataviews';
  * WordPress Dependencies
  */
 import { Button } from '@wordpress/components';
-import { useCallback, useMemo, useState } from '@wordpress/element';
+import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { closeSmall } from '@wordpress/icons';
 
@@ -29,8 +29,11 @@ import {
 	parseFiltersFromSearch,
 	urlHasFilterParams,
 } from '../utils/filter-url-sync';
+import { isCollectionList } from '../utils/list-kind';
 import { getEditableFields } from '../utils/simple-edit-fields';
 import BulkEditModal from './bulk-edit-modal';
+
+export const REFRESH_EVENT = 'prcWpAdminDataview.refresh';
 
 const DEFAULT_LAYOUTS = {
 	table: {
@@ -55,6 +58,35 @@ const DEFAULT_LAYOUTS = {
 		},
 	},
 };
+
+const COLLECTION_LAYOUTS = {
+	table: {
+		showMedia: false,
+		layout: {
+			primaryField: 'title',
+		},
+	},
+	list: {
+		showMedia: false,
+		layout: {
+			primaryField: 'title',
+		},
+	},
+};
+
+const DEFAULT_SORT = { field: 'date', direction: 'desc' };
+const COLLECTION_SORT = { field: 'title', direction: 'asc' };
+
+function getDefaultSort() {
+	if (!isCollectionList()) {
+		return DEFAULT_SORT;
+	}
+	const sort = window?.prcWpAdminDataview?.config?.defaultSort;
+	return typeof sort?.field === 'string' &&
+		(sort.direction === 'asc' || sort.direction === 'desc')
+		? { field: sort.field, direction: sort.direction }
+		: COLLECTION_SORT;
+}
 
 function workflowsEnabled() {
 	const workflows = window?.prcWpAdminDataview?.workflows?.enabled;
@@ -90,14 +122,11 @@ export function getDefaultView(postType) {
 		type: getDefaultLayoutType(),
 		page: 1,
 		perPage: 20,
-		sort: {
-			field: 'date',
-			direction: 'desc',
-		},
+		sort: getDefaultSort(),
 		search: '',
 		filters,
 		titleField: 'title',
-		mediaField: 'featuredImage',
+		mediaField: isCollectionList() ? undefined : 'featuredImage',
 		showMedia: false,
 		fields: getDefaultVisibleFields(),
 		showLevels: postType === 'post',
@@ -121,7 +150,10 @@ export default function PostsDataViews({
 		postType,
 		restPath
 	);
-	const editorsByPostId = usePresenceEditorsByPost(postType);
+	const isCollection = isCollectionList();
+	const editorsByPostId = usePresenceEditorsByPost(
+		isCollection ? '' : postType
+	);
 
 	const onFilterByParent = useCallback(
 		(parentId) => {
@@ -147,6 +179,21 @@ export default function PostsDataViews({
 		setSelection([]);
 		refresh();
 	}, [refresh]);
+
+	useEffect(() => {
+		window.addEventListener(REFRESH_EVENT, refreshAndClearSelection);
+		return () =>
+			window.removeEventListener(REFRESH_EVENT, refreshAndClearSelection);
+	}, [refreshAndClearSelection]);
+
+	useEffect(() => {
+		const intervalMs = Number(config?.refreshIntervalMs);
+		if (!Number.isFinite(intervalMs) || intervalMs < 1000) {
+			return undefined;
+		}
+		const interval = window.setInterval(refresh, intervalMs);
+		return () => window.clearInterval(interval);
+	}, [config?.refreshIntervalMs, refresh]);
 
 	const handleBulkEdit = useCallback((items) => {
 		setBulkItems(items);
@@ -229,7 +276,9 @@ export default function PostsDataViews({
 					onChangeView={onChangeView}
 					actions={actions}
 					paginationInfo={paginationInfo}
-					defaultLayouts={DEFAULT_LAYOUTS}
+					defaultLayouts={
+						isCollection ? COLLECTION_LAYOUTS : DEFAULT_LAYOUTS
+					}
 					getItemId={(item) => String(item.id)}
 					getItemLevel={
 						postType === 'post' ? getItemLevel : undefined

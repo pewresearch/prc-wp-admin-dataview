@@ -226,6 +226,9 @@ class Settings {
 		}
 
 		foreach ( $this->lists->all() as $post_type => $config ) {
+			if ( List_Registry::is_collection( $config ) ) {
+				continue;
+			}
 			if ( array_key_exists( $post_type, $input['enabled'] ) ) {
 				$sanitized['enabled'][ $post_type ] = rest_sanitize_boolean( $input['enabled'][ $post_type ] );
 			}
@@ -246,6 +249,10 @@ class Settings {
 		$post_types = array();
 
 		foreach ( $this->lists->all() as $post_type => $config ) {
+			// Collections have no classic screen to fall back to, so they cannot be disabled.
+			if ( List_Registry::is_collection( $config ) ) {
+				continue;
+			}
 			$post_type_object = get_post_type_object( $post_type );
 			$label            = '';
 			if ( $post_type_object && isset( $post_type_object->labels->name ) ) {

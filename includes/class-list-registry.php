@@ -11,6 +11,9 @@ namespace PRC\Platform\Wp_Admin_Dataview;
  * Holds list screen configs keyed by post type.
  */
 class List_Registry {
+	public const KIND_POST_TYPE  = 'post-type';
+	public const KIND_COLLECTION = 'collection';
+
 	/**
 	 * Registered configs.
 	 *
@@ -31,6 +34,12 @@ class List_Registry {
 			return;
 		}
 
+		$kind = self::KIND_COLLECTION === ( $config['kind'] ?? '' ) ? self::KIND_COLLECTION : self::KIND_POST_TYPE;
+		// A collection has no posts behind it, so the shared list endpoint cannot serve it.
+		if ( self::KIND_COLLECTION === $kind && empty( $config['restPath'] ) ) {
+			return;
+		}
+
 		$merged = array_merge(
 			array(
 				'postType'             => $post_type,
@@ -46,8 +55,18 @@ class List_Registry {
 			array(
 				'postType' => $post_type,
 				'pageSlug' => $page_slug,
+				'kind'     => $kind,
 			)
 		);
+
+		if ( self::KIND_COLLECTION === $kind ) {
+			$merged['duplicate']            = Duplicate_Args::normalize( array( 'enabled' => false ) );
+			$merged['newUrl']               = '';
+			$merged['hideDefaultNewButton'] = true;
+			$this->lists[ $post_type ]      = $merged;
+			return;
+		}
+
 		$merged['duplicate'] = Duplicate_Args::normalize( $config['duplicate'] ?? array() );
 
 		$this->lists[ $post_type ] = $merged;
@@ -55,6 +74,16 @@ class List_Registry {
 		if ( function_exists( 'add_post_type_support' ) ) {
 			add_post_type_support( $post_type, 'prc-wp-admin-dataview' );
 		}
+	}
+
+	/**
+	 * Whether a list config is a non-post collection.
+	 *
+	 * @param array<string, mixed>|null $config List config.
+	 * @return bool
+	 */
+	public static function is_collection( ?array $config ): bool {
+		return self::KIND_COLLECTION === ( $config['kind'] ?? '' );
 	}
 
 	/**

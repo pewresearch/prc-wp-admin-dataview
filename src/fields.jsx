@@ -21,6 +21,7 @@ import { StatusDotBadge, STATUS_DOT_COLORS } from '@prc/components';
  */
 import { usePresenceEditorsContext } from './presence-context';
 import { fetchTaxonomyTerms } from './utils/fetch-taxonomy-terms';
+import { isCollectionList } from './utils/list-kind';
 import { getStatusBadgeTone } from './utils/status-badge';
 
 const STATUS_BADGE_COLORS = {
@@ -336,7 +337,7 @@ export function getDefaultVisibleFields() {
 	const boot = getLocalizedData();
 	// Omit `title`: it is view.titleField (primary column). Including it here
 	// duplicates the Title column in the table.
-	const fields = ['status', 'author', 'date'];
+	const fields = isCollectionList(boot) ? [] : ['status', 'author', 'date'];
 	for (const entry of getTaxonomyEntries()) {
 		if (entry.defaultVisible && !fields.includes(entry.fieldId)) {
 			fields.push(entry.fieldId);
@@ -370,6 +371,24 @@ export function getFieldCapabilities({ postType, config }) {
 }
 
 export default function getFields({ postType, config, onFilterByParent }) {
+	const titleField = {
+		id: 'title',
+		label: __('Title', 'prc-wp-admin-dataview'),
+		type: 'text',
+		enableHiding: false,
+		enableSorting: true,
+		enableGlobalSearch: true,
+		getValue: ({ item }) => item.title || '',
+		render: ({ item }) => <TitleCell item={item} />,
+	};
+
+	if (isCollectionList()) {
+		return applyFilters('prcWpAdminDataview.fields', [titleField], {
+			postType,
+			config,
+		});
+	}
+
 	const authorElements = getAuthorElements();
 	const baseFields = [
 		{
@@ -382,16 +401,7 @@ export default function getFields({ postType, config, onFilterByParent }) {
 			getValue: ({ item }) => item.featuredImage || '',
 			render: ({ item }) => <FeaturedImageField item={item} />,
 		},
-		{
-			id: 'title',
-			label: __('Title', 'prc-wp-admin-dataview'),
-			type: 'text',
-			enableHiding: false,
-			enableSorting: true,
-			enableGlobalSearch: true,
-			getValue: ({ item }) => item.title || '',
-			render: ({ item }) => <TitleCell item={item} />,
-		},
+		titleField,
 		{
 			id: 'status',
 			label: __('Status', 'prc-wp-admin-dataview'),

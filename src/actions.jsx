@@ -19,6 +19,7 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal Dependencies
  */
 import DuplicateModal, { DUPLICATE_LABEL } from './duplicate-action';
+import { isCollectionList } from './utils/list-kind';
 
 const EDIT_LABEL = __('Edit', 'prc-wp-admin-dataview');
 const TRASH_LABEL = __('Move to Trash', 'prc-wp-admin-dataview');
@@ -191,6 +192,7 @@ function TrashModal({
 			<Text>{message}</Text>
 			<VStack spacing={2} direction="row" justify="flex-end">
 				<Button
+					__next40pxDefaultSize
 					variant="tertiary"
 					onClick={closeModal}
 					disabled={isTrashing}
@@ -198,6 +200,7 @@ function TrashModal({
 					{__('Cancel', 'prc-wp-admin-dataview')}
 				</Button>
 				<Button
+					__next40pxDefaultSize
 					variant="primary"
 					isDestructive
 					onClick={handleConfirm}
@@ -275,6 +278,7 @@ function DeletePermanentlyModal({
 			<Text>{message}</Text>
 			<VStack spacing={2} direction="row" justify="flex-end">
 				<Button
+					__next40pxDefaultSize
 					variant="tertiary"
 					onClick={closeModal}
 					disabled={isDeleting}
@@ -282,6 +286,7 @@ function DeletePermanentlyModal({
 					{__('Cancel', 'prc-wp-admin-dataview')}
 				</Button>
 				<Button
+					__next40pxDefaultSize
 					variant="primary"
 					isDestructive
 					onClick={handleConfirm}
@@ -343,6 +348,14 @@ export default function getActions({
 	hasEditableFields,
 }) {
 	const restBase = config?.restBase;
+
+	if (isCollectionList()) {
+		return applyFilters('prcWpAdminDataview.actions', [], {
+			postType,
+			config,
+			onRefresh,
+		});
+	}
 
 	const baseActions = [
 		{

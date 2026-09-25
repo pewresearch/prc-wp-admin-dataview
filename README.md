@@ -144,6 +144,7 @@ List configs also accept:
 
 - `hideDefaultNewButton`: Hide the shell Add New button when a domain provides its own header actions.
 - `menuParent`: Register and highlight the list under another admin menu, such as `edit.php?post_type=campaign`.
+- `menuAfter`: Submenu slug to place this list's menu item directly after, such as `post-new.php?post_type=prc_email_txn`. The item stays where WordPress put it when the slug is missing.
 - `newUrl`: Override the default `post-new.php` URL. Set it to an empty string to remove the default button.
 - `restPath`: Use a domain-owned REST list endpoint.
 - `duplicate`: Per-type New Draft copy. Default is enabled for a registered list. Types that never registered a list cannot duplicate. Keys:
@@ -162,6 +163,38 @@ Presence is automatic for registered post types that support the Presence API.
 The shell polls room data for title avatars. The "Active editors" filter maps
 to the shared REST query and uses active room IDs, so it filters the full list
 rather than only the loaded page.
+
+## Register a non-post collection
+
+Data that is not a post type (for example `wp_options` records) can use the shell with `kind => 'collection'`. `postType` becomes the list id. It keys saved filters, appearance, and provider filters. It does not need to be a registered post type.
+
+```php
+$lists->register(
+	array(
+		'postType'      => 'prc_email_audience',
+		'kind'          => 'collection',
+		'pageSlug'      => 'prc-email-builder-audiences',
+		'menuTitle'     => 'Audiences',
+		'pageTitle'     => 'Audiences',
+		'singularLabel' => 'Audience',
+		'restPath'      => '/prc-email-builder/v1/audiences-system/library', // Required.
+		'menuParent'    => 'edit.php?post_type=prc_email_campaign',
+		'defaultSort'   => array( 'field' => 'builtAt', 'direction' => 'desc' ),
+		'refreshIntervalMs' => 120000, // Optional. Minimum 1000 ms.
+	)
+);
+```
+
+A collection differs from a post-type list:
+
+- `restPath` is required. `register()` ignores a collection without one. The route must return rows with a string or integer `id` and a `title`, plus `X-WP-Total` and `X-WP-TotalPages` headers.
+- The shell adds only the `title` field and no row actions. Providers add every other field and action through `prcWpAdminDataview.fields` and `prcWpAdminDataview.actions`. A cross-cutting provider whose action needs a post (for example the attachments report) must return early when `window.prcWpAdminDataview.kind === 'collection'`.
+- There is no classic screen, `edit.php` redirect, menu rewrite, Add New button, duplicate, trash, author or status filter, presence, or Settings toggle.
+- Only table and list layouts are offered. `defaultSort` (`field` plus `asc` or `desc`) sets the first sort. The fallback is title ascending.
+- `refreshIntervalMs` opts a live collection into periodic REST refreshes. Values below 1000 ms are ignored. The timer stops when the list unmounts.
+- The page is capability-gated by `edit_posts`.
+
+A page-extra modal can reload the list without a full page reload by dispatching `window.dispatchEvent( new CustomEvent( 'prcWpAdminDataview.refresh' ) )`. This works on every list, not only on collections.
 
 ## Host alignment
 

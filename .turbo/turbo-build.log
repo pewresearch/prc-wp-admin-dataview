@@ -1,5 +1,5 @@
 
-> @prc/wp-admin-dataview@1.2.2 build
+> @prc/wp-admin-dataview@1.3.0 build
 > wp-scripts build && wp-scripts build --config webpack.settings.config.js
 
 assets by chunk 2.31 MiB (name: index)
@@ -8,8 +8,8 @@ assets by chunk 2.31 MiB (name: index)
 assets by path [1m[32m./*.css[39m[22m 208 KiB
   asset [1m[32m./style-index-rtl.css[39m[22m 104 KiB [1m[32m[emitted][39m[22m (name: ./style-index) (id hint: style)
   asset [1m[32m./style-index.css[39m[22m 104 KiB [1m[32m[emitted][39m[22m (name: ./style-index) (id hint: style)
-Entrypoint [1mindex[39m[22m [1m[33m[big][39m[22m 2.51 MiB = [1m[32m./style-index.css[39m[22m 104 KiB [1m[32m./style-index-rtl.css[39m[22m 104 KiB [1m[32mindex.js[39m[22m 2.31 MiB [1m[32mindex.asset.php[39m[22m 396 bytes
-orphan modules 9.59 MiB (javascript) 937 bytes (runtime) [1m[33m[orphan][39m[22m 3897 modules
+Entrypoint [1mindex[39m[22m [1m[33m[big][39m[22m 2.52 MiB = [1m[32m./style-index.css[39m[22m 104 KiB [1m[32m./style-index-rtl.css[39m[22m 104 KiB [1m[32mindex.js[39m[22m 2.31 MiB [1m[32mindex.asset.php[39m[22m 396 bytes
+orphan modules 9.59 MiB (javascript) 937 bytes (runtime) [1m[33m[orphan][39m[22m 3898 modules
 runtime modules 4.53 KiB 8 modules
 built modules 4.93 MiB (javascript) 104 KiB (css/mini-extract) [1m[33m[built][39m[22m
   modules by path [1m../../node_modules/[39m[22m 30.4 KiB
@@ -18,8 +18,8 @@ built modules 4.93 MiB (javascript) 104 KiB (css/mini-extract) [1m[33m[built]
       [1m../../node_modules/hoist-non-react-statics/dist/hoist-non-react-statics.cjs.js[39m[22m 2.68 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
       + 2 modules
     + 5 modules
-  modules by path [1m./src/[39m[22m 4.9 MiB (javascript) 104 KiB (css/mini-extract)
-    [1m./src/index.js + 1135 modules[39m[22m 4.9 MiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+  modules by path [1m./src/[39m[22m 4.91 MiB (javascript) 104 KiB (css/mini-extract)
+    [1m./src/index.js + 1136 modules[39m[22m 4.91 MiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
     css ../../node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[3].use[1]!../../node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[3].use[2]!../../node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[3].use[3]![1m./src/style.scss[39m[22m 104 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
   [1mexternal "React"[39m[22m 42 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
   [1mexternal "ReactDOM"[39m[22m 42 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
@@ -31,7 +31,7 @@ Assets:
 
 [1m[33mWARNING[39m[22m in [1mentrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
 Entrypoints:
-  index (2.51 MiB)
+  index (2.52 MiB)
       ./style-index.css
       ./style-index-rtl.css
       index.js
@@ -42,10 +42,10 @@ Entrypoints:
 You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
 For more info visit https://webpack.js.org/guides/code-splitting/[39m[22m
 
-webpack 5.106.2 compiled with [1m[33m3 warnings[39m[22m in 25932 ms
+webpack 5.106.2 compiled with [1m[33m3 warnings[39m[22m in 24019 ms
 asset [1m[32mindex.js[39m[22m 1.44 KiB [1m[32m[emitted][39m[22m [1m[32m[minimized][39m[22m (name: index)
 asset [1m[32mindex.asset.php[39m[22m 157 bytes [1m[32m[emitted][39m[22m (name: index)
 Entrypoint [1mindex[39m[22m 1.6 KiB = [1m[32mindex.js[39m[22m 1.44 KiB [1m[32mindex.asset.php[39m[22m 157 bytes
 orphan modules 2.58 KiB [1m[33m[orphan][39m[22m 8 modules
 [1m./src/settings/index.tsx + 8 modules[39m[22m 2.73 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 561 ms
+webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 590 ms
