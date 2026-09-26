@@ -47,6 +47,19 @@ const DATE_OPERATORS = {
 			args.after = bound;
 		}
 	},
+	between(args, value) {
+		if (!Array.isArray(value)) {
+			return;
+		}
+		const from = calendarDay(value[0]);
+		const to = calendarDay(value[1]);
+		if (from) {
+			args.date_from = from;
+		}
+		if (to) {
+			args.date_to = to;
+		}
+	},
 };
 
 function applyDateFilter(args, filter) {

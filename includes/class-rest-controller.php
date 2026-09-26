@@ -65,44 +65,44 @@ class REST_Controller {
 				'callback'            => array( $this, 'get_list' ),
 				'permission_callback' => array( $this, 'list_permission' ),
 				'args'                => array(
-					'post_type' => array(
+					'post_type'      => array(
 						'type'              => 'string',
 						'required'          => true,
 						'sanitize_callback' => 'sanitize_key',
 					),
-					'page'      => array(
+					'page'           => array(
 						'type'    => 'integer',
 						'default' => 1,
 					),
-					'per_page'  => array(
+					'per_page'       => array(
 						'type'    => 'integer',
 						'default' => 20,
 					),
-					'search'    => array(
+					'search'         => array(
 						'type'              => 'string',
 						'default'           => '',
 						'sanitize_callback' => 'sanitize_text_field',
 					),
-					'status'    => array(
+					'status'         => array(
 						'type'              => 'string',
 						'default'           => implode( ',', self::DEFAULT_LIST_STATUSES ),
 						'sanitize_callback' => 'sanitize_text_field',
 					),
-					'orderby'   => array(
+					'orderby'        => array(
 						'type'    => 'string',
 						'default' => 'date',
 					),
-					'order'     => array(
+					'order'          => array(
 						'type'    => 'string',
 						'default' => 'desc',
 						'enum'    => array( 'asc', 'desc', 'ASC', 'DESC' ),
 					),
-					'parentFamily' => array(
+					'parentFamily'   => array(
 						'type'              => 'integer',
 						'required'          => false,
 						'sanitize_callback' => 'absint',
 					),
-					'author'       => array(
+					'author'         => array(
 						'type'              => 'string',
 						'required'          => false,
 						'sanitize_callback' => 'sanitize_text_field',
@@ -123,6 +123,16 @@ class REST_Controller {
 						'sanitize_callback' => 'sanitize_text_field',
 					),
 					'date_on'        => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'date_from'      => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'date_to'        => array(
 						'type'              => 'string',
 						'required'          => false,
 						'sanitize_callback' => 'sanitize_text_field',
@@ -408,7 +418,7 @@ class REST_Controller {
 		);
 
 		if ( post_type_supports( $post_type, 'thumbnail' ) ) {
-			$thumb = get_the_post_thumbnail_url( $post, 'medium' );
+			$thumb                = get_the_post_thumbnail_url( $post, 'medium' );
 			$row['featuredImage'] = $thumb ? (string) $thumb : '';
 		} else {
 			$row['featuredImage'] = '';

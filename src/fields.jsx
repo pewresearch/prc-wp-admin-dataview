@@ -440,11 +440,11 @@ export default function getFields({ postType, config, onFilterByParent }) {
 		{
 			id: 'date',
 			label: __('Date', 'prc-wp-admin-dataview'),
-			type: 'datetime',
+			type: 'date',
 			readOnly: true,
 			enableSorting: true,
 			filterBy: {
-				operators: ['on', 'before', 'after'],
+				operators: ['on', 'before', 'after', 'between'],
 			},
 			getValue: ({ item }) => item.date || '',
 			render: ({ item }) => {

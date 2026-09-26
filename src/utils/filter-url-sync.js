@@ -26,6 +26,7 @@ const POST_STATUS_KEY = 'post_status';
 const PARENT_FAMILY_FIELD = 'parentFamily';
 const DEFAULT_OPERATOR = 'isAny';
 const PARENT_FAMILY_OPERATOR = 'is';
+const BETWEEN_OPERATOR = 'between';
 
 /**
  * Normalize search input to a URLSearchParams instance.
@@ -37,13 +38,18 @@ export function getSearchParams(search) {
 	if (search instanceof URLSearchParams) {
 		return search;
 	}
-	const raw =
-		typeof search === 'string'
-			? search.startsWith('?')
-				? search.slice(1)
-				: search
-			: '';
-	return new URLSearchParams(raw);
+	return new URLSearchParams(rawQueryString(search));
+}
+
+/**
+ * @param {*} search Search input.
+ * @return {string} Query string without a leading `?`, or '' for non-strings.
+ */
+function rawQueryString(search) {
+	if (typeof search !== 'string') {
+		return '';
+	}
+	return search.startsWith('?') ? search.slice(1) : search;
 }
 
 /**
@@ -76,12 +82,7 @@ function getRawEntries(search) {
 		]);
 	}
 
-	const raw =
-		typeof search === 'string'
-			? search.startsWith('?')
-				? search.slice(1)
-				: search
-			: '';
+	const raw = rawQueryString(search);
 	if (!raw) {
 		return [];
 	}
@@ -253,9 +254,14 @@ export function parseFiltersFromSearch(search) {
 			continue;
 		}
 
-		const value = decodeCommaJoined(rawValue);
+		let value = decodeCommaJoined(rawValue);
 		if (value.length === 0) {
 			continue;
+		}
+		// Core's wp_admin_canonical_url() rewrites `,` to `%2C` on load, which
+		// merges both range bounds into one segment.
+		if (operator === BETWEEN_OPERATOR && value.length === 1) {
+			value = value[0].split(',');
 		}
 		filters.push({
 			field: fieldId,
@@ -272,9 +278,9 @@ export function parseFiltersFromSearch(search) {
  * Preserves path, hash, reserved WP keys, and unrelated query args.
  *
  * @param {Array<{field: string, operator: string, value: *}>|undefined} filters
- *        Active DataViews filters.
- * @param {{location?: Location, history?: History}|undefined} options
- *        Optional window substitutes for tests.
+ *                                                                               Active DataViews filters.
+ * @param {{location?: Location, history?: History}|undefined}           options
+ *                                                                               Optional window substitutes for tests.
  */
 export function syncFiltersToUrl(filters, options = {}) {
 	const location = options.location || window.location;

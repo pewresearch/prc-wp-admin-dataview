@@ -12,7 +12,7 @@ namespace PRC\Platform\Wp_Admin_Dataview;
 use WP_REST_Request;
 
 /**
- * Applies `after`, `before`, and `date_on` list query args.
+ * Applies `after`, `before`, `date_on`, and `date_from`/`date_to` list query args.
  *
  * Custom list REST routes that run `prc_wp_admin_dataview_query_args`
  * pick this up without a second mapper.
@@ -78,6 +78,14 @@ class Date_Query {
 			$clauses[] = $clause;
 		}
 
+		$range = self::range_clause(
+			(string) $request->get_param( 'date_from' ),
+			(string) $request->get_param( 'date_to' )
+		);
+		if ( null !== $range ) {
+			$clauses[] = $range;
+		}
+
 		if ( empty( $clauses ) ) {
 			return $query_args;
 		}
@@ -89,6 +97,36 @@ class Date_Query {
 
 		$query_args['date_query'] = array_merge( $existing, $clauses );
 		return $query_args;
+	}
+
+	/**
+	 * Build an inclusive whole-day clause for the DataViews `between` operator.
+	 *
+	 * Day-only bounds with `inclusive` make WP_Date_Query expand `after` to
+	 * 00:00:00 and `before` to 23:59:59.
+	 *
+	 * @param string $from_raw Raw `date_from` value.
+	 * @param string $to_raw   Raw `date_to` value.
+	 * @return array<string, mixed>|null
+	 */
+	private static function range_clause( string $from_raw, string $to_raw ): ?array {
+		$from = self::parse_day( $from_raw );
+		$to   = self::parse_day( $to_raw );
+		if ( null === $from && null === $to ) {
+			return null;
+		}
+
+		$clause = array(
+			'column'    => 'post_date',
+			'inclusive' => true,
+		);
+		if ( null !== $from ) {
+			$clause['after'] = sprintf( '%04d-%02d-%02d', $from['year'], $from['month'], $from['day'] );
+		}
+		if ( null !== $to ) {
+			$clause['before'] = sprintf( '%04d-%02d-%02d', $to['year'], $to['month'], $to['day'] );
+		}
+		return $clause;
 	}
 
 	/**
