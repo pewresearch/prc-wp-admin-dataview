@@ -69,6 +69,8 @@ Constants live on `PRC\Platform\Wp_Admin_Dataview\Provider_Registry`.
 
 Row navigation uses DataViews `renderItemLink` with `item.edit_url`. Prefer that over `onClickItem` on list screens. Keep `onClickItem` only for pickers and modals that select a value instead of navigating.
 
+DataViews toggles row selection on Ctrl/Cmd+Click, which also swallows clicks on links in the row. `useNewTabLinkClicks` stops those clicks on `document` before React sees them when the target is an `a[href]` inside the list, so the browser opens the link in a new tab. Render real `<a href>` elements in custom fields to get this behavior; buttons and plain cells keep Ctrl/Cmd+Click selection.
+
 ### JS SlotFills
 
 The shell provides two named slots. Boot's `RootSinglePage` wraps `SlotFillProvider` (the classic fallback does not add a second provider):

@@ -7,7 +7,13 @@ import { DataViews } from '@wordpress/dataviews';
  * WordPress Dependencies
  */
 import { Button } from '@wordpress/components';
-import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { closeSmall } from '@wordpress/icons';
 
@@ -22,6 +28,7 @@ import getFields, {
 	getDefaultVisibleFields,
 	isLocalizedFlag,
 } from '../fields';
+import useNewTabLinkClicks from '../hooks/use-new-tab-link-clicks';
 import usePosts from '../hooks/use-posts';
 import usePresenceEditorsByPost from '../hooks/use-presence-editors';
 import { PresenceEditorsProvider } from '../presence-context';
@@ -145,6 +152,8 @@ export default function PostsDataViews({
 }) {
 	const [selection, setSelection] = useState([]);
 	const [bulkItems, setBulkItems] = useState(null);
+	const containerRef = useRef(null);
+	useNewTabLinkClicks(containerRef);
 	const { posts, isLoading, error, paginationInfo, refresh } = usePosts(
 		view,
 		postType,
@@ -268,7 +277,10 @@ export default function PostsDataViews({
 
 	return (
 		<PresenceEditorsProvider value={editorsByPostId}>
-			<div className="prc-wp-admin-dataview__dataviews">
+			<div
+				className="prc-wp-admin-dataview__dataviews"
+				ref={containerRef}
+			>
 				<DataViews
 					data={posts}
 					fields={fields}
