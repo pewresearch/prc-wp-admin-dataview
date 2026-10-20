@@ -586,16 +586,31 @@
 }
 
 // Fill Gutenberg Boot's rounded stage (RootSinglePage), not the old wrap Card.
-// Specificity must beat Boot's desktop `height: auto` on `.boot-layout__stage`.
+// Core Boot ships plain `boot-layout__*` classes. The Gutenberg plugin ships
+// CSS-module classes (`<hash>__stage`) whose prefix changes between builds, so
+// each rule pairs the plain class with a hash-independent attribute selector.
+// Specificity must beat Boot's desktop `height: auto` on the stage.
 // Below 782px Boot also `position:fixed` the stage; keep overflow hidden so
 // the table scroller, not the page, moves.
-.boot-layout--single-page .boot-layout__stage:has(.prc-wp-admin-dataview) {
+.boot-layout--single-page .boot-layout__stage:has(.prc-wp-admin-dataview),
+[class*="layout-single-page"] [class*="__stage"]:has(.prc-wp-admin-dataview) {
 	height: 100%;
 	min-height: 0;
 	overflow: hidden;
 }
 
-.boot-layout__stage > .prc-wp-admin-dataview {
+// Match the DataViews wrapper so no gray frame shows around the table.
+// Same token and fallback as the sticky table header above.
+.boot-layout__stage:has(> .prc-wp-admin-dataview),
+[class*="__stage"]:has(> .prc-wp-admin-dataview) {
+	background-color: var(
+		--wp-dataviews-color-background,
+		var(--wpds-color-background-surface-neutral-strong, #fff)
+	);
+}
+
+.boot-layout__stage > .prc-wp-admin-dataview,
+[class*="__stage"] > .prc-wp-admin-dataview {
 	height: 100%;
 	min-height: 0;
 }
@@ -603,7 +618,9 @@
 // Boot pins the stage as position:fixed below 782px. Keep a definite
 // height so .dataviews-layout__container stays the inner scroller.
 @media (max-width: 781px) {
-	.boot-layout--single-page .boot-layout__stage:has(.prc-wp-admin-dataview) {
+	.boot-layout--single-page .boot-layout__stage:has(.prc-wp-admin-dataview),
+	[class*="layout-single-page"]
+		[class*="__stage"]:has(.prc-wp-admin-dataview) {
 		height: calc(100dvh - var(--wp-admin--admin-bar--height, 46px));
 		overflow: hidden;
 	}
