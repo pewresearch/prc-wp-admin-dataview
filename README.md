@@ -82,7 +82,11 @@ The shell entry exports `HeaderActionsFill`, `PageExtrasFill`, `emitPageExtra`, 
 
 ### REST
 
-- `GET /prc-api/v3/wp-admin-dataview/list` — paginated rows. A non-empty `search` param is applied **after** `prc_wp_admin_dataview_query_args` (`s`, `ep_integrate`, numeric `post__in`). Trash-only status lists, chart lists, and any `meta_query` filter (Working on / watchers, dataset ZIP, quiz type, form action, email status) stay on MySQL. Chart search matches **title** and `design_slug` only (not block `post_content`). Default date sort becomes relevance so title hits rank first. When Elasticsearch is down, ElasticPress falls back to MySQL. An `author` param of user IDs maps to `WP_Query` `author` / `author__in`. Date filters map to `date_on` (calendar day) and WordPress REST `after` / `before` bounds (`WP_Query` `date_query` on `post_date`). Domain list routes that run `prc_wp_admin_dataview_query_args` inherit the same bounds.
+- `GET /prc-api/v3/wp-admin-dataview/list` — paginated rows. A non-empty `search` param is applied **after** `prc_wp_admin_dataview_query_args` (`s`, `ep_integrate`, numeric `post__in`). Trash-only status lists, chart lists, and any `meta_query` filter (Working on / watchers, dataset ZIP, quiz type, form action, email status) stay on MySQL. Chart search matches **title** and `design_slug` only (not block `post_content`). Default date sort becomes relevance so title hits rank first. When Elasticsearch is down, ElasticPress falls back to MySQL. An `author` param of user IDs maps to `WP_Query` `author` / `author__in`. **Date filters** on the shell `date` field (`src/fields.jsx`) support DataViews operators `on`, `before`, `after`, and `between`. `view-to-query-args.js` maps them to REST params; `Date_Query` merges them into `WP_Query` `date_query` on `post_date`:
+    - `on` → `date_on` (`YYYY-MM-DD`, whole calendar day)
+    - `before` / `after` → `before` / `after` (ISO date or datetime; date-only values are accepted without a time component)
+    - `between` → `date_from` / `date_to` (inclusive whole days; either bound may be omitted)
+      Domain list routes that run `prc_wp_admin_dataview_query_args` inherit the same bounds without a second mapper.
 - `GET /prc-api/v3/wp-admin-dataview/terms?taxonomy=&post_type=` — `{ value: slug, label }` pairs for a registry taxonomy. DataViews filter chips call this on demand. Format and Research Team are primary chips (small lists). Other taxonomies stay under Add filter.
 - `POST /prc-api/v3/wp-admin-dataview/field` with `{ postId, field, value, postType }`
 - `POST /prc-api/v3/wp-admin-dataview/duplicate` with `{ postId, postType }` → `{ id, edit_url }`
@@ -162,6 +166,7 @@ After copy the shell fires `prc_wp_admin_dataview_duplicated`. Use `prc_wp_admin
 The full config is available in `window.prcWpAdminDataview.config`. The localized `duplicate` object omits `callback`.
 
 Presence is automatic for registered post types that support the Presence API.
+`Presence_Provider::supports_post_type()` requires the post type to support `presence` and `wp_presence_is_available()` to return true. Having the plugin loaded is not enough. When the presence table is missing or recording is switched off, the shell hides avatars and the "Active editors" filter.
 The shell polls room data for title avatars. The "Active editors" filter maps
 to the shared REST query and uses active room IDs, so it filters the full list
 rather than only the loaded page.

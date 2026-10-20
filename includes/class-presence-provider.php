@@ -77,7 +77,8 @@ class Presence_Provider {
 	 * @param string $post_type Post type.
 	 */
 	public static function supports_post_type( string $post_type ): bool {
-		return function_exists( 'wp_get_presence_by_room_prefix' )
+		return function_exists( 'wp_presence_is_available' )
+			&& wp_presence_is_available()
 			&& post_type_supports( $post_type, 'presence' );
 	}
 
