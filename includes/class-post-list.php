@@ -517,13 +517,15 @@ class Post_List {
 			$can_publish = current_user_can( $pto->cap->publish_posts );
 		}
 
+		$hide_new_button = self::hide_new_button( $config, $user_id );
+
 		$localize = array(
 			'postType'           => $post_type,
 			'pageSlug'           => (string) $config['pageSlug'],
 			'singularLabel'      => $singular_label,
 			'classicUrl'         => self::get_classic_url( $post_type ),
 			'newUrl'             => self::get_new_url( $config ),
-			'hideDefaultNewButton' => ! empty( $config['hideDefaultNewButton'] ),
+			'hideDefaultNewButton' => $hide_new_button,
 			'restPath'           => (string) ( $config['restPath'] ?? '/prc-api/v3/wp-admin-dataview/list' ),
 			'restBase'           => $rest_base,
 			'savedFilters'       => Saved_Filters::get_for_post_type( $user_id, $post_type ),
@@ -559,7 +561,7 @@ class Post_List {
 				array(
 					'pageTitle'            => (string) ( $config['pageTitle'] ?? '' ),
 					'restBase'             => $rest_base,
-					'hideDefaultNewButton' => ! empty( $config['hideDefaultNewButton'] ),
+					'hideDefaultNewButton' => $hide_new_button,
 					'duplicate'            => Duplicate_Args::for_client( $config, $post_type ),
 				)
 			),
@@ -569,6 +571,32 @@ class Post_List {
 		$localize['statuses'] = self::ensure_trash_status_option( $localize['statuses'] ?? array() );
 
 		return $localize;
+	}
+
+	/**
+	 * Whether a post-type list hides the shell Add New button for a user.
+	 *
+	 * Collections always hide it and do not run the filter.
+	 *
+	 * @param array<string, mixed> $config  Registered list config.
+	 * @param int                  $user_id User id.
+	 */
+	public static function hide_new_button( array $config, int $user_id ): bool {
+		/**
+		 * Filters whether a DataViews list hides its Add New button for a user.
+		 *
+		 * Hiding the button does not block `post-new.php`. Guard that URL separately.
+		 *
+		 * @param bool   $hide    Whether to hide the button. Starts from the list's `hideDefaultNewButton`.
+		 * @param string $list_id List id. For a post-type list this is the post type.
+		 * @param int    $user_id User id.
+		 */
+		return (bool) apply_filters(
+			Provider_Registry::FILTER_HIDE_NEW_BUTTON,
+			! empty( $config['hideDefaultNewButton'] ),
+			(string) $config['postType'],
+			$user_id
+		);
 	}
 
 	/**

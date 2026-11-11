@@ -18,6 +18,7 @@ class Provider_Registry {
 	public const FILTER_UPDATE_FIELD    = 'prc_wp_admin_dataview_update_field';
 	public const FILTER_DUPLICATE_ARGS  = 'prc_wp_admin_dataview_duplicate_args';
 	public const FILTER_TAXONOMY_FIELDS = 'prc_wp_admin_dataview_taxonomy_fields';
+	public const FILTER_HIDE_NEW_BUTTON = 'prc_wp_admin_dataview_hide_new_button';
 	public const ACTION_DUPLICATED      = 'prc_wp_admin_dataview_duplicated';
 
 	/**
@@ -33,6 +34,7 @@ class Provider_Registry {
 			'update_field'    => self::FILTER_UPDATE_FIELD,
 			'duplicate_args'  => self::FILTER_DUPLICATE_ARGS,
 			'taxonomy_fields' => self::FILTER_TAXONOMY_FIELDS,
+			'hide_new_button' => self::FILTER_HIDE_NEW_BUTTON,
 		);
 	}
 }

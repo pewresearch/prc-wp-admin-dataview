@@ -52,6 +52,7 @@ The shell writes `title` and `status` (status allowlist excludes `trash` and `fu
 | `prc_wp_admin_dataview_update_field`    | `(true\|WP_Error\|null $result, int $post_id, string $field, mixed $value, string $post_type)` | Handle a field write; first non-null wins                                                                                                                                             |
 | `prc_wp_admin_dataview_duplicate_args`  | `(array $args, string $post_type, WP_Post\|null $source): array`                               | Change include/exclude lists, suffix, or enabled after list config                                                                                                                    |
 | `prc_wp_admin_dataview_taxonomy_fields` | `(array $registry): array`                                                                     | Add `{taxonomy, fieldId, label, defaultVisible, isPrimaryFilter}` rows. The shell lazy-loads term options, filters, and shapes those taxonomies when the current post type uses them. |
+| `prc_wp_admin_dataview_hide_new_button` | `(bool $hide, string $list_id, int $user_id): bool`                                            | Hide the shell Add New button for one user. Starts from the list's `hideDefaultNewButton`. Runs for post-type lists only. It does not block `post-new.php`.                           |
 
 Constants live on `PRC\Platform\Wp_Admin_Dataview\Provider_Registry`.
 
@@ -122,6 +123,16 @@ DataViews appearance settings persist in browser `localStorage` per post type (`
 When a browser has no stored document, the list seeds once from the existing user-meta appearance (localized as `boot.appearance`) and then writes that seed to `localStorage`. After the first write, this browser stops reading stale user meta.
 
 Narrow viewports default to list layout (WordPress `medium`, `max-width: 782px`) until the editor picks a layout. Stored mode still wins. Named saved-filter presets remain user meta.
+
+## Builder training gate
+
+`Builder_Training_Gate` soft-depends on the training modules in `prc-wp-admin-tours`. The list id (the post type) is the builder key, for example `chart`. When the `training-modules` flag is on for a user and `is_builder_unlocked()` returns `false` for that builder:
+
+- The `prc_wp_admin_dataview_hide_new_button` filter hides Add New on the builder's list.
+- The boot data gets `training: { moduleId, startUrl, label, description }`. The shell renders it in `prcWpAdminDataview.HeaderActions` as a hint and a "Start {type} training" button (`data-prc-training-cta`). The label reads "Continue" when the module is in progress. `startUrl` is `Training_Sandbox::start_url()` for the first unfinished module whose required modules are complete.
+- `post-new.php?post_type={builder}` redirects to that start URL, which opens the training sandbox. When no module can start, it returns 403.
+
+Nothing changes when `prc-wp-admin-tours` is not loaded, the flag is off, the user's role is not gated, or the builder has no modules. `training` is `null` then. Domain lists that render their own Add New button in a fill (for example quizzes) keep that button, but `post-new.php` is still guarded. Gated roles and the required module count come from the `prc-wp-admin-tours` gate filters. See [the tours architecture doc](../../docs/plugins/prc-wp-admin-tours/architecture.md#gate).
 
 ## Register another post type
 

@@ -16,6 +16,7 @@ import PostsDataViews from './components/dataviews';
 import { filtersEqual } from './components/saved-filters/helpers';
 import SavedFiltersShelf from './components/saved-filters/shelf';
 import useSavedFilters from './components/saved-filters/use-saved-filters';
+import TrainingCta from './components/training-cta';
 import { HeaderActionsSlot, PageExtrasSlot } from './slots';
 import { syncFiltersToUrl } from './utils/filter-url-sync';
 
@@ -191,6 +192,7 @@ export default function App() {
 									</Button>
 								) : null}
 								{headerActions}
+								<TrainingCta training={boot.training} />
 								<HeaderActionsSlot />
 							</div>
 							{pageDescription ? (

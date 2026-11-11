@@ -76,6 +76,7 @@ class Bootstrap {
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-taxonomy-fields-provider.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-field-updates.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-tours.php';
+		require_once plugin_dir_path( __DIR__ ) . '/includes/class-builder-training-gate.php';
 
 		$this->lists = new List_Registry();
 	}
@@ -104,6 +105,7 @@ class Bootstrap {
 		new Taxonomy_Fields_Provider( $this->get_loader() );
 		new Field_Updates( $this->get_loader() );
 		new Tours( $this->get_loader(), $this->lists );
+		new Builder_Training_Gate( $this->get_loader() );
 	}
 
 	/**
