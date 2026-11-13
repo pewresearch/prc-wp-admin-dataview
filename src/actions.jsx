@@ -308,29 +308,43 @@ async function restoreItems({
 	onActionPerformed,
 }) {
 	const { createErrorNotice, createSuccessNotice } = dispatch(noticesStore);
-	const count = items.length;
 
-	try {
-		await Promise.all(
-			items.map((item) =>
-				apiFetch({
-					path: getItemRestPath(postType, item.id, restBase),
-					method: 'POST',
-					data: { status: item.previousStatus || 'draft' },
-				})
-			)
-		);
+	const results = await Promise.allSettled(
+		items.map((item) =>
+			apiFetch({
+				path: getItemRestPath(postType, item.id, restBase),
+				method: 'POST',
+				data: { status: item.previousStatus || 'draft' },
+			})
+		)
+	);
+
+	// A post that comes back still in the trash was not restored, even on HTTP 200.
+	const restored = items.filter(
+		(item, index) =>
+			'fulfilled' === results[index].status &&
+			'trash' !== results[index].value?.status
+	);
+	const failures = results.filter(
+		(result) =>
+			'rejected' === result.status || 'trash' === result.value?.status
+	);
+
+	if (restored.length) {
 		createSuccessNotice(
-			count === 1
+			restored.length === 1
 				? __('Item restored.', 'prc-wp-admin-dataview')
 				: __('Items restored.', 'prc-wp-admin-dataview'),
 			{ type: 'snackbar' }
 		);
-		onActionPerformed?.(items);
+		onActionPerformed?.(restored);
 		onRefresh?.();
-	} catch (error) {
+	}
+
+	if (failures.length) {
+		const failure = failures[0];
 		createErrorNotice(
-			error?.message ||
+			failure.reason?.message ||
 				__(
 					'Could not restore the selected item(s).',
 					'prc-wp-admin-dataview'
