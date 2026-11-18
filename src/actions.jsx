@@ -20,12 +20,16 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import DuplicateModal, { DUPLICATE_LABEL } from './duplicate-action';
 import { isCollectionList } from './utils/list-kind';
+import {
+	DEFAULT_PROPER_NOUNS,
+	normalizeActionLabels,
+} from './utils/normalize-action-labels';
 
 const EDIT_LABEL = __('Edit', 'prc-wp-admin-dataview');
-const TRASH_LABEL = __('Move to Trash', 'prc-wp-admin-dataview');
+const TRASH_LABEL = __('Move to trash', 'prc-wp-admin-dataview');
 const RESTORE_LABEL = __('Restore', 'prc-wp-admin-dataview');
 const DELETE_PERMANENTLY_LABEL = __(
-	'Delete Permanently',
+	'Delete permanently',
 	'prc-wp-admin-dataview'
 );
 
@@ -207,7 +211,7 @@ function TrashModal({
 					isBusy={isTrashing}
 					disabled={isTrashing}
 				>
-					{__('Move to Trash', 'prc-wp-admin-dataview')}
+					{__('Move to trash', 'prc-wp-admin-dataview')}
 				</Button>
 			</VStack>
 		</VStack>
@@ -354,6 +358,23 @@ async function restoreItems({
 	}
 }
 
+function applyActionsFilter(actions, context) {
+	const filtered = applyFilters(
+		'prcWpAdminDataview.actions',
+		actions,
+		context
+	);
+	// Sentence-case rules are English-only; translated labels keep their casing.
+	if (!/^en\b/i.test(document.documentElement.lang || 'en')) {
+		return filtered;
+	}
+	const properNouns = applyFilters(
+		'prcWpAdminDataview.actionLabelProperNouns',
+		DEFAULT_PROPER_NOUNS
+	);
+	return normalizeActionLabels(filtered, properNouns);
+}
+
 export default function getActions({
 	postType,
 	config,
@@ -364,7 +385,7 @@ export default function getActions({
 	const restBase = config?.restBase;
 
 	if (isCollectionList()) {
-		return applyFilters('prcWpAdminDataview.actions', [], {
+		return applyActionsFilter([], {
 			postType,
 			config,
 			onRefresh,
@@ -487,7 +508,7 @@ export default function getActions({
 		},
 	];
 
-	return applyFilters('prcWpAdminDataview.actions', baseActions, {
+	return applyActionsFilter(baseActions, {
 		postType,
 		config,
 		onRefresh,

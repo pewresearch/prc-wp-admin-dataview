@@ -68,6 +68,10 @@ Constants live on `PRC\Platform\Wp_Admin_Dataview\Provider_Registry`.
 
 `prcWpAdminDataview.actions` **adds or remaps** incoming shell actions (quiz remaps labels; email drops View on transactional lists). The shell already ships Duplicate after Edit. **Do not replace** the array. Replacing discards shell Edit (real link), Duplicate, View, Trash (bulk + notices), and later shared actions.
 
+#### Action label casing
+
+Action labels use sentence case ("Move to trash", "View responses"). After `prcWpAdminDataview.actions` runs, `getActions()` normalizes every string `label` and `modalHeader`. It also normalizes function labels that return a string. Function labels that return JSX are left alone, so write those in sentence case yourself. Words in the `prcWpAdminDataview.actionLabelProperNouns` list (`(nouns: string[]) => string[]`, default includes `WordPress`, `PRC`, `PDF`) keep their casing. All-caps words are kept as written.
+
 Row navigation uses DataViews `renderItemLink` with `item.edit_url`. Prefer that over `onClickItem` on list screens. Keep `onClickItem` only for pickers and modals that select a value instead of navigating.
 
 DataViews toggles row selection on Ctrl/Cmd+Click, which also swallows clicks on links in the row. `useNewTabLinkClicks` stops those clicks on `document` before React sees them when the target is an `a[href]` inside the list, so the browser opens the link in a new tab. Render real `<a href>` elements in custom fields to get this behavior; buttons and plain cells keep Ctrl/Cmd+Click selection.
